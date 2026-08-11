@@ -102,10 +102,14 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
 - ⚠️ **레지스트리 네임스페이스 이관 필요** — `server.json` 을 `io.github.rubatoyd/kci-openapi-mcp` 로 변경.
   발행은 GitHub OIDC 로 계정 소유를 검증하므로 구 네임스페이스로는 더 이상 발행할 수 없다.
   기존 발행분(`io.github.rubato103/…` v0.1.3)은 고아로 남고, 다음 태그 푸시가 새 항목을 만든다.
-- ⚠️ **프로젝트 내 `.venv/` 가 깨져 있음** — `pyvenv.cfg` 의 home 이 **다른 사용자 프로필**
-  `C:\Users\rubat\…`(OneDrive 로 유입된 타 PC 산출물)를 가리켜 `uv run` 이 exit 103 으로 실패한다.
-  MCP 동작에는 무관(uvx 격리환경 사용). 테스트는 `UV_PROJECT_ENVIRONMENT=C:/Users/user/.venvs/kci-openapi-mcp`
-  로 우회하면 31건 통과. `UV_PROJECT_ENVIRONMENT` 는 실제로 **설정돼 있지 않다**(§2 기재와 불일치).
+- ✅ **파손된 프로젝트 내 `.venv/` 정리 완료 (2026-08-11)** — `pyvenv.cfg` 의 home 이 **다른 사용자 프로필**
+  `C:\Users\rubat\…`(OneDrive 로 유입된 타 PC 산출물)를 가리켜 `uv run`·`uv lock` 이 exit 103 으로 실패했다.
+  kci(3,156 파일)·scienceon(2,424 파일) 양쪽 삭제. MCP 동작에는 애초에 무관했다(uvx 격리환경 사용).
+  §2 의 규약대로 **클라우드 폴더 밖** 환경을 쓰도록 `.claude/settings.local.json` 의 env 에
+  `UV_PROJECT_ENVIRONMENT=C:/Users/user/.venvs/kci-openapi-mcp` 를 명시(scienceon 도 동일 처리).
+  검증: `.venv/` 재생성 없이 pytest 31건 통과.
+  ⚠️ 이 설정은 **Claude Code 세션에만** 적용된다. 사용자 터미널에서 `uv run` 하면 프로젝트 안에 `.venv/`
+  가 다시 생긴다(`UV_PROJECT_ENVIRONMENT` 는 환경변수 전용 — pyproject/uv.toml 로는 지정 불가).
 
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
