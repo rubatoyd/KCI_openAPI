@@ -126,6 +126,17 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   — 우리가 직접 쓰지 않는 전이 의존성을 묶으면 상류가 고친 뒤에도 사용자를 낡은 버전에 잡아두게 된다.
   MCP 로그에서 이 두 줄은 무시하고 `Server disconnected` / `Git operation failed` 같은 실제 오류만 볼 것.
 
+- ⚠️ **액션 버전 표기: 이동 태그가 있는 것과 없는 것을 구분할 것 (2026-08-11 실패로 학습)** —
+  Node.js 20 deprecation 해소를 위해 액션들을 상향했다(checkout→v7, setup-python→v7,
+  upload-artifact→v7, download-artifact→v8, setup-node→v7, node-version 20→24).
+  `actions/*` 는 **이동 메이저 태그**(`v7` 등)를 유지하므로 메이저만 써도 된다. 그러나
+  **`astral-sh/setup-uv` 는 v7 이후 이동 태그를 내지 않는다**(`v5`·`v6`·`v7` 존재, `v8`·`v9` 없음).
+  `@v9` 로 썼다가 CI 가 `Unable to resolve action … unable to find version v9` 로 즉시 실패했다
+  → `@v9.0.0` 정확 고정으로 해결. **상향 전 `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` 로
+  태그 실존을 확인할 것.** 릴리스 워크플로는 태그를 밀어야만 실행되므로 이 실수가 거기 있으면
+  다음 릴리스에서야 터진다(이번엔 전수 확인해 `actions/*` 는 모두 정상임을 확인).
+  아티팩트 액션은 **v4+ 끼리 호환**이므로 upload@v7 ↔ download@v8 조합에 문제 없다(v3 이하만 미지원).
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.
