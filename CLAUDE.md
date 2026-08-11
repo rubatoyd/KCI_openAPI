@@ -99,9 +99,12 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   타 프로젝트는 계속 깨진다. 실제로 `투고논문/학부모 학술동향` 의 `kci`·`scienceon` 이 구주소로 남아 있었다.
   ⚠️ `~/.claude.json` 은 **중복 키**(`c:/…` vs `C:/…` 경로)를 담고 있어 **JSON 파싱→재직렬화 금지**
   (한쪽이 조용히 소실된다). 원문 문자열 치환으로만 수정할 것.
-- ⚠️ **레지스트리 네임스페이스 이관 필요** — `server.json` 을 `io.github.rubatoyd/kci-openapi-mcp` 로 변경.
-  발행은 GitHub OIDC 로 계정 소유를 검증하므로 구 네임스페이스로는 더 이상 발행할 수 없다.
-  기존 발행분(`io.github.rubato103/…` v0.1.3)은 고아로 남고, 다음 태그 푸시가 새 항목을 만든다.
+- ✅ **레지스트리 네임스페이스 이관 완료 (v0.1.4, 2026-08-11)** — 발행이 GitHub OIDC 로 계정 소유를
+  검증하므로 구 네임스페이스로는 더 이상 발행할 수 없었다. `server.json` 을
+  `io.github.rubatoyd/kci-openapi-mcp` 로 바꾸고 `v0.1.4` 태그 푸시 → 워크플로 전 단계 통과.
+  레지스트리 실조회 확인: `io.github.rubatoyd/kci-openapi-mcp v0.1.4 status:active`.
+  구 항목 `io.github.rubato103/…` v0.1.0~v0.1.3 은 **active 상태로 고아로 남는다**(회수 불가).
+  릴리스 자산 4종(경량 + win/macos/linux 자체완결) 첨부 확인.
 - ✅ **파손된 프로젝트 내 `.venv/` 정리 완료 (2026-08-11)** — `pyvenv.cfg` 의 home 이 **다른 사용자 프로필**
   `C:\Users\rubat\…`(OneDrive 로 유입된 타 PC 산출물)를 가리켜 `uv run`·`uv lock` 이 exit 103 으로 실패했다.
   kci(3,156 파일)·scienceon(2,424 파일) 양쪽 삭제. MCP 동작에는 애초에 무관했다(uvx 격리환경 사용).
