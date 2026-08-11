@@ -136,6 +136,12 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   태그 실존을 확인할 것.** 릴리스 워크플로는 태그를 밀어야만 실행되므로 이 실수가 거기 있으면
   다음 릴리스에서야 터진다(이번엔 전수 확인해 `actions/*` 는 모두 정상임을 확인).
   아티팩트 액션은 **v4+ 끼리 호환**이므로 upload@v7 ↔ download@v8 조합에 문제 없다(v3 이하만 미지원).
+  ✅ **릴리스 경로 실검증** — `build-mcpb.yml` 을 `workflow_dispatch`(tag=v0.1.4)로 돌려 3개 OS
+  전부 통과, **annotation 0건**(deprecation 해소 확인). 재빌드 자산으로 교체되었으나 경량
+  `kci-openapi-mcp.mcpb` 는 이 워크플로가 건드리지 않으므로 **레지스트리 `fileSha256` 은 유효**하다.
+  재빌드 바이너리를 내려받아 **cwd 까지 프로젝트 밖으로 뺀 클린 조건**에서 `kci_status` 실행 →
+  `has_api_key:False`(= `.env` 미로딩으로 위 가설 실증) + **OAI Identify 네트워크 왕복 성공**.
+  ※ `upload/download-artifact`·`setup-node` 는 이 워크플로가 쓰지 않아 미검증 — 다음 릴리스에서 확인된다.
 
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
