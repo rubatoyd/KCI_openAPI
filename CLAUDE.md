@@ -105,6 +105,11 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   레지스트리 실조회 확인: `io.github.rubatoyd/kci-openapi-mcp v0.1.4 status:active`.
   구 항목 `io.github.rubato103/…` v0.1.0~v0.1.3 은 **active 상태로 고아로 남는다**(회수 불가).
   릴리스 자산 4종(경량 + win/macos/linux 자체완결) 첨부 확인.
+  ✅ **자체완결 바이너리(win-x64) 런타임 재검증** — 릴리스 자산을 내려받아 **클린 환경**
+  (`env -i`, PATH=system32 만, Python·uv 없음)에서 `kci_status` 실호출 성공.
+  OAI Identify **실제 네트워크 왕복**까지 확인(truststore 주입 실패 경고 없음).
+  ※ `has_api_key:true` 로 나온 것은 `config.load_dotenv()` 가 **cwd 의 `.env`** 를 읽기 때문이다
+  (env 를 비워도 cwd 가 프로젝트면 키가 잡힌다). 클린 검증 시 이 점을 감안할 것.
 - ✅ **파손된 프로젝트 내 `.venv/` 정리 완료 (2026-08-11)** — `pyvenv.cfg` 의 home 이 **다른 사용자 프로필**
   `C:\Users\rubat\…`(OneDrive 로 유입된 타 PC 산출물)를 가리켜 `uv run`·`uv lock` 이 exit 103 으로 실패했다.
   kci(3,156 파일)·scienceon(2,424 파일) 양쪽 삭제. MCP 동작에는 애초에 무관했다(uvx 격리환경 사용).
