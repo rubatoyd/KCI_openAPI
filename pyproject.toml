@@ -36,9 +36,9 @@ kci-mcp = "kci_mcp.server:main"           # 짧은 별칭
 kci = "kci_mcp.cli:main"                  # CLI
 
 [project.urls]
-Homepage = "https://github.com/rubato103/KCI_openAPI"
-Repository = "https://github.com/rubato103/KCI_openAPI"
-Issues = "https://github.com/rubato103/KCI_openAPI/issues"
+Homepage = "https://github.com/rubatoyd/KCI_openAPI"
+Repository = "https://github.com/rubatoyd/KCI_openAPI"
+Issues = "https://github.com/rubatoyd/KCI_openAPI/issues"
 
 [dependency-groups]
 dev = ["pytest>=8.0"]

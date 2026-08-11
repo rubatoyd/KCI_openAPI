@@ -1,6 +1,6 @@
 # kci-openapi-mcp
 
-<!-- mcp-name: io.github.rubato103/kci-openapi-mcp -->
+<!-- mcp-name: io.github.rubatoyd/kci-openapi-mcp -->
 
 한국연구재단(NRF) **KCI(Korea Citation Index)** 문헌·인용지수 검색·수집 **MCP 서버 + CLI**.
 **REST Open API**(키워드 검색)와 **OAI-PMH**(무인증 대량 수확)를 **혼용**한다.
@@ -23,7 +23,7 @@
 
 ## 현재 상태
 - ✅ 구현·**REST/OAI 라이브 검증** 완료 · pytest 24 + MCP 프로토콜 스모크 · 도구 annotations
-- ✅ **공식 MCP 레지스트리 발행됨**: `io.github.rubato103/kci-openapi-mcp` (registry.modelcontextprotocol.io 검색 가능)
+- ✅ **공식 MCP 레지스트리 발행됨**: `io.github.rubatoyd/kci-openapi-mcp` (registry.modelcontextprotocol.io 검색 가능)
 - ✅ Claude Desktop **자체완결 `.mcpb`**(win/mac/linux, Python·uv 불필요) + Claude Code `.mcp.json`
 - ⚠️ `mcp` SDK는 **1.x 고정**(`mcp>=1.2.0,<2`) — 2.0 에서 `mcp.server.fastmcp` 가 제거되어 상한 없이는 기동 실패
 
@@ -34,12 +34,12 @@
 ```bash
 export KCI_API_KEY=<발급키>   # 선택 — 없으면 OAI 무인증 도구만 동작
 # 또는 어디서나:
-claude mcp add kci --env KCI_API_KEY=$KCI_API_KEY -- uvx --from git+https://github.com/rubato103/KCI_openAPI kci-mcp
+claude mcp add kci --env KCI_API_KEY=$KCI_API_KEY -- uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci-mcp
 ```
 
 ### Claude Desktop
 **(권장) 자체완결 `.mcpb` — Python·uv 불필요**, 더블클릭 설치:
-[릴리스](https://github.com/rubato103/KCI_openAPI/releases/latest)에서 OS에 맞는 파일 다운로드 →
+[릴리스](https://github.com/rubatoyd/KCI_openAPI/releases/latest)에서 OS에 맞는 파일 다운로드 →
 더블클릭(또는 Settings → Extensions → Install) → `KCI_API_KEY` 입력(선택).
 - Windows: `kci-openapi-mcp-win-x64.mcpb` / macOS: `…-macos-arm64.mcpb` / Linux: `…-linux-x64.mcpb`
 
@@ -49,14 +49,14 @@ claude mcp add kci --env KCI_API_KEY=$KCI_API_KEY -- uvx --from git+https://gith
 ```json
 { "mcpServers": { "kci": {
   "command": "uvx",
-  "args": ["--from", "git+https://github.com/rubato103/KCI_openAPI", "kci-mcp"],
+  "args": ["--from", "git+https://github.com/rubatoyd/KCI_openAPI", "kci-mcp"],
   "env": { "KCI_API_KEY": "<발급키 또는 비움>", "KCI_OS_TRUST": "1" }
 } } }
 ```
 
 ### uvx (저장소에서 직접 실행)
 ```bash
-uvx --from git+https://github.com/rubato103/KCI_openAPI kci-mcp   # MCP 서버(stdio)
+uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci-mcp   # MCP 서버(stdio)
 ```
 > PyPI에는 게시하지 않음 — 레지스트리 배포는 `.mcpb`(GitHub Release) 방식.
 

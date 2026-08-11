@@ -3,7 +3,7 @@
 > Claude Desktop 커넥터/익스텐션 **디렉터리 등재 신청 폼**에 붙여넣을 내용 초안.
 > 폼 항목명은 다를 수 있으니, 아래 블록을 해당 칸에 맞춰 사용하세요. 리뷰어는 영어권일 가능성이 높아
 > 제출 본문은 **영어**로 작성했고, 사용자용 한글 안내는 〔 〕 로 표시했습니다.
-> 제출물 파일은 **자체완결 `.mcpb`**(Python·uv 불필요)를 사용하세요 — [릴리스](https://github.com/rubato103/KCI_openAPI/releases/latest).
+> 제출물 파일은 **자체완결 `.mcpb`**(Python·uv 불필요)를 사용하세요 — [릴리스](https://github.com/rubatoyd/KCI_openAPI/releases/latest).
 
 ---
 
@@ -12,12 +12,12 @@
 - **Display name:** KCI Citation Search (한국학술지인용색인)
 - **Version:** 0.1.3
 - **Category:** Research / Academic & Reference / Data
-- **Author / Publisher:** Yeondong Yang (GitHub: rubato103)
+- **Author / Publisher:** Yeondong Yang (GitHub: rubatoyd)
 - **Contact email:** rubato103@gmail.com
-- **Repository:** https://github.com/rubato103/KCI_openAPI
-- **Homepage / Docs:** https://github.com/rubato103/KCI_openAPI#readme
+- **Repository:** https://github.com/rubatoyd/KCI_openAPI
+- **Homepage / Docs:** https://github.com/rubatoyd/KCI_openAPI#readme
 - **License:** MIT
-- **MCP Registry name:** `io.github.rubato103/kci-openapi-mcp`
+- **MCP Registry name:** `io.github.rubatoyd/kci-openapi-mcp`
 - **Submission artifact (.mcpb):** self-contained, per-OS — `kci-openapi-mcp-win-x64.mcpb` / `-macos-arm64.mcpb` / `-linux-x64.mcpb` (no runtime prerequisite)
 
 ## 2. Short description 〔한 줄 설명〕
@@ -72,7 +72,7 @@ With no key, key-required tools return a graceful `{ "error": "KCI_API_KEY 미�
 - Open source (MIT), reproducible build (`.github/workflows/build-mcpb.yml`).
 
 ## 9. Support 〔지원〕
-- Issues: https://github.com/rubato103/KCI_openAPI/issues
+- Issues: https://github.com/rubatoyd/KCI_openAPI/issues
 - Maintainer: rubato103@gmail.com
 
 ---

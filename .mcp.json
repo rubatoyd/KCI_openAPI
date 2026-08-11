@@ -3,7 +3,7 @@
     "kci": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/rubato103/KCI_openAPI", "kci-mcp"],
+      "args": ["--from", "git+https://github.com/rubatoyd/KCI_openAPI", "kci-mcp"],
       "env": {
         "KCI_API_KEY": "${KCI_API_KEY:-}",
         "KCI_OS_TRUST": "${KCI_OS_TRUST:-1}"

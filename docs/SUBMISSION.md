@@ -5,8 +5,8 @@
 > 본 문서는 심사 기준 충족 현황과 신청 절차를 정리한다.
 
 ## 현재 배포 상태 (심사 전에도 사용 가능)
-- ✅ 공식 MCP 레지스트리: `io.github.rubato103/kci-openapi-mcp` v0.1.3 (검색 가능)
-- ✅ Claude Desktop 설치용 `.mcpb`: https://github.com/rubato103/KCI_openAPI/releases/download/v0.1.3/kci-openapi-mcp.mcpb
+- ✅ 공식 MCP 레지스트리: `io.github.rubatoyd/kci-openapi-mcp` v0.1.3 (검색 가능)
+- ✅ Claude Desktop 설치용 `.mcpb`: https://github.com/rubatoyd/KCI_openAPI/releases/download/v0.1.3/kci-openapi-mcp.mcpb
 - ✅ 수동 config / `.mcp.json`(Claude Code) 모두 동작 (uvx-from-git 라이브 검증됨)
 
 ## 심사 기준 (Anthropic 디렉터리)

@@ -87,7 +87,27 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
 - 원본 XML 필드는 `raw`로 보존. 커밋 메시지 한국어, Claude 서명 금지.
 - **라이브 검증 우선(추정 금지)** — 인증키 발급 후 각 API 소량 호출로 응답 스키마 확정 → 가이드 "검증됨" 갱신.
 
-## 8. 상태 (2026-08-04)
+## 8. 상태 (2026-08-11)
+- ⚠️ **GitHub 계정명 변경 `rubato103` → `rubatoyd` (2026-08-11)** — Claude Desktop 의 `kci` 서버가
+  `Failed to resolve --with requirement / Git operation failed` 로 3회 연속 기동 실패했다(11:04·11:10·11:11).
+  `uvx --from git+…` 는 **기동할 때마다 원격 HEAD 를 재해석**하므로 저장소 주소가 곧 단일 장애점이다.
+  `.mcp.json`·`claude_desktop_config.json`·`git remote`·메타데이터 전부 신주소로 갱신(해결, 콜드 스타트 재현 확인).
+  GitHub 리다이렉트는 살아 있으나 의존하지 말 것. `docs/작업일지.md` 의 과거 기록은 사실이므로 보존.
+- ⚠️ **MCP 등록 지점은 3곳이며 서로 독립이다** — ① 본 저장소 `.mcp.json`(Claude Code, 프로젝트 스코프)
+  ② `%APPDATA%\Claude\claude_desktop_config.json`(Claude Desktop) ③ **`~/.claude.json`**(Claude Code
+  **사용자 전역**, `projects.<경로>.mcpServers` 에 프로젝트별 local 스코프 등록). ①만 고치면 ③에 등록된
+  타 프로젝트는 계속 깨진다. 실제로 `투고논문/학부모 학술동향` 의 `kci`·`scienceon` 이 구주소로 남아 있었다.
+  ⚠️ `~/.claude.json` 은 **중복 키**(`c:/…` vs `C:/…` 경로)를 담고 있어 **JSON 파싱→재직렬화 금지**
+  (한쪽이 조용히 소실된다). 원문 문자열 치환으로만 수정할 것.
+- ⚠️ **레지스트리 네임스페이스 이관 필요** — `server.json` 을 `io.github.rubatoyd/kci-openapi-mcp` 로 변경.
+  발행은 GitHub OIDC 로 계정 소유를 검증하므로 구 네임스페이스로는 더 이상 발행할 수 없다.
+  기존 발행분(`io.github.rubato103/…` v0.1.3)은 고아로 남고, 다음 태그 푸시가 새 항목을 만든다.
+- ⚠️ **프로젝트 내 `.venv/` 가 깨져 있음** — `pyvenv.cfg` 의 home 이 **다른 사용자 프로필**
+  `C:\Users\rubat\…`(OneDrive 로 유입된 타 PC 산출물)를 가리켜 `uv run` 이 exit 103 으로 실패한다.
+  MCP 동작에는 무관(uvx 격리환경 사용). 테스트는 `UV_PROJECT_ENVIRONMENT=C:/Users/user/.venvs/kci-openapi-mcp`
+  로 우회하면 31건 통과. `UV_PROJECT_ENVIRONMENT` 는 실제로 **설정돼 있지 않다**(§2 기재와 불일치).
+
+## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.
 - ✅ **OAI-PMH 라이브 검증 완료**(무인증): Identify/ListSets/Formats/ListRecords(oai_kci·oai_dc)/GetRecord.
