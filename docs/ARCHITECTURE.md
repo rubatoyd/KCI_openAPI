@@ -19,7 +19,7 @@ server.py / cli.py            ← MCP 도구 · CLI 표면
   공통 코어:
    models.py     통합 Article/Reference/JournalCitation 스키마
    parser.py     REST XML + OAI(oai_dc/oai_kci) → 동일 Article 로 정규화(raw 보존)
-   exporters.py  xlsx/csv/json/sqlite (scienceon 재사용)
+   exporters.py  xlsx/csv/json/sqlite (scienceON 재사용)
    config.py     엔드포인트 2종 + KCI_API_KEY 로딩
 ```
 - 두 클라이언트는 **출력 스키마가 같다**(parser가 흡수) → 상위 도구·exporter는 출처를 몰라도 됨.

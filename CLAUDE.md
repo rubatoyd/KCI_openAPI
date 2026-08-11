@@ -1,7 +1,7 @@
 # kci-openapi-mcp — 프로젝트 지침
 
 > 한국연구재단(NRF) **KCI(Korea Citation Index)** 문헌·인용지수 검색·수집기.
-> 공개 **MCP 서버 + CLI**. 자매 프로젝트 **scienceon-mcp**(`../scienceon`)와 동일 아키텍처.
+> 공개 **MCP 서버 + CLI**. 자매 프로젝트 **scienceON-mcp**(`../scienceon`)와 동일 아키텍처.
 > KCI는 **두 가지 공개 인터페이스**를 제공하며 본 프로젝트는 둘 다 다룬다:
 > - **REST Open API**(키워드 검색형, 인증키 필요) → [docs/KCI_API_GUIDE.md](docs/KCI_API_GUIDE.md)
 > - **OAI-PMH**(대량 수확형, **인증키 불필요**) → [docs/KCI_OAI_PMH_GUIDE.md](docs/KCI_OAI_PMH_GUIDE.md)
@@ -23,7 +23,7 @@ ScienceON(KISTI)과 **상호보완**: 수록 범위 교차검증, 국문 초록 
 | 출력 | xlsx · csv · json · sqlite |
 | 공개 | MIT 예정. `.env`·`reference/`·`output/`는 gitignore |
 
-## 3. 구조 (scienceon-mcp 미러, 계획)
+## 3. 구조 (scienceON-mcp 미러, 계획)
 ```
 src/kci_mcp/
   config.py     # .env 로딩, Base URL/엔드포인트(REST + OAI)
@@ -31,7 +31,7 @@ src/kci_mcp/
   oai_client.py # OAI-PMH GET(verb) / resumptionToken 루프 / 무인증
   parser.py     # XML 정규화 — REST(MetaData/outputData/record) + OAI(oai_dc/oai_kci), raw 보존
   models.py     # Article / Reference / JournalCitation 스키마(REST·OAI 공통)
-  exporters.py  # xlsx/csv/json/sqlite (scienceon 재사용 가능)
+  exporters.py  # xlsx/csv/json/sqlite (scienceON 재사용 가능)
   server.py     # MCP 도구 (아래 §5)
   cli.py        # status/search/detail/references/citation/harvest/collect
 docs/
@@ -50,7 +50,7 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
 - **OAI-PMH는 무인증** — 키 없이 즉시 사용(`/oai/request`). 키 발급 전에도 OAI 검증·수집 가능.
 - ⚠️ 인증키는 코드/로그/커밋 금지 — `.env`(gitignore) 또는 OS 사용자 환경변수로만.
 
-## 5. MCP 도구 (계획) — scienceon 도구셋 대응
+## 5. MCP 도구 (계획) — scienceON 도구셋 대응
 | 도구 | API | 설명 |
 |------|-----|------|
 | `kci_status` | (소량 articleSearch / OAI Identify) | 인증키 유효성·연결 점검 |

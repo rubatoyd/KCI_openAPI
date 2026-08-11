@@ -4,7 +4,7 @@
 
 한국연구재단(NRF) **KCI(Korea Citation Index)** 문헌·인용지수 검색·수집 **MCP 서버 + CLI**.
 **REST Open API**(키워드 검색)와 **OAI-PMH**(무인증 대량 수확)를 **혼용**한다.
-자매 프로젝트 scienceon-mcp(KISTI ScienceON)와 동일 아키텍처.
+자매 프로젝트 scienceON-mcp(KISTI ScienceON)와 동일 아키텍처.
 
 ## 무엇을 하나
 - 논문 검색·상세 (서지 · **국문/영문 초록** · 키워드 · 저자/소속)
