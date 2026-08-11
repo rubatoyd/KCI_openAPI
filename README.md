@@ -22,7 +22,7 @@
 규격: [docs/KCI_API_GUIDE.md](docs/KCI_API_GUIDE.md) · [docs/KCI_OAI_PMH_GUIDE.md](docs/KCI_OAI_PMH_GUIDE.md) · 설계: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## 현재 상태
-- ✅ 구현·**REST/OAI 라이브 검증** 완료 · pytest 24 + MCP 프로토콜 스모크 · 도구 annotations
+- ✅ 구현·**REST/OAI 라이브 검증** 완료 · pytest 31 + MCP 프로토콜 스모크 · 도구 annotations
 - ✅ **공식 MCP 레지스트리 발행됨**: `io.github.rubatoyd/kci-openapi-mcp` (registry.modelcontextprotocol.io 검색 가능)
 - ✅ Claude Desktop **자체완결 `.mcpb`**(win/mac/linux, Python·uv 불필요) + Claude Code `.mcp.json`
 - ⚠️ `mcp` SDK는 **1.x 고정**(`mcp>=1.2.0,<2`) — 2.0 에서 `mcp.server.fastmcp` 가 제거되어 상한 없이는 기동 실패

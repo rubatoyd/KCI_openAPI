@@ -1,12 +1,15 @@
 # Claude Desktop 디렉터리 등재 신청 가이드
 
-> 공식 MCP 레지스트리 발행(완료)과 **별개로**, Claude Desktop **인앱 검색/디렉터리**에 노출되려면
+> 공식 MCP 레지스트리 발행과 **별개로**, Claude Desktop **인앱 검색/디렉터리**에 노출되려면
 > Anthropic의 **커넥터/익스텐션 디렉터리 심사**를 통과해야 한다(레지스트리는 자동 동기화되지 않음).
 > 본 문서는 심사 기준 충족 현황과 신청 절차를 정리한다.
 
 ## 현재 배포 상태 (심사 전에도 사용 가능)
-- ✅ 공식 MCP 레지스트리: `io.github.rubatoyd/kci-openapi-mcp` v0.1.3 (검색 가능)
-- ✅ Claude Desktop 설치용 `.mcpb`: https://github.com/rubatoyd/KCI_openAPI/releases/download/v0.1.3/kci-openapi-mcp.mcpb
+- ⚠️ 공식 MCP 레지스트리: **구 네임스페이스** `io.github.rubato103/kci-openapi-mcp` v0.1.3 만 발행돼 있다.
+  2026-08-11 GitHub 계정명이 `rubato103` → `rubatoyd` 로 바뀌어 **구 네임스페이스로는 더 이상 발행할 수
+  없고**(발행이 GitHub OIDC 로 계정 소유를 검증한다), 기존 항목은 고아로 남는다.
+  신 네임스페이스 `io.github.rubatoyd/kci-openapi-mcp` 는 **다음 태그 푸시 시 새 항목으로 생성**된다.
+- ✅ Claude Desktop 설치용 `.mcpb`: https://github.com/rubatoyd/KCI_openAPI/releases/latest/download/kci-openapi-mcp.mcpb
 - ✅ 수동 config / `.mcp.json`(Claude Code) 모두 동작 (uvx-from-git 라이브 검증됨)
 
 ## 심사 기준 (Anthropic 디렉터리)
@@ -15,7 +18,7 @@
 ### 충족 현황 체크리스트
 | 항목 | 상태 | 근거 |
 |---|:--:|---|
-| 모든 도구 기능 동작 | ✅ | MCP 프로토콜 스모크(stdio) + 라이브 검증, pytest 24 |
+| 모든 도구 기능 동작 | ✅ | MCP 프로토콜 스모크(stdio) + 라이브 검증, pytest 31 |
 | 도구 안전성 annotations | ✅ | `readOnlyHint`(조회 6종)/`openWorldHint`(전체)/collect는 비파괴 쓰기 |
 | 파괴적 동작 없음 | ✅ | 삭제·변조 없음. `kci_collect` 만 출력파일 생성(비파괴) |
 | 자격증명 안전 | ✅ | `KCI_API_KEY` env 전용, 로그/응답/예외에 미노출(키 포함 URL 누출 차단), **선택**(OAI 무인증 동작) |

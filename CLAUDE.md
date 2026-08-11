@@ -111,6 +111,13 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   ⚠️ 이 설정은 **Claude Code 세션에만** 적용된다. 사용자 터미널에서 `uv run` 하면 프로젝트 안에 `.venv/`
   가 다시 생긴다(`UV_PROJECT_ENVIRONMENT` 는 환경변수 전용 — pyproject/uv.toml 로는 지정 불가).
 
+- ℹ️ **기동 시 stderr 경고는 무해하다(오진 주의)** — 두 서버 모두 매 기동마다 다음을 찍는다:
+  `pydantic_settings … IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition`.
+  **pydantic-settings 2.14 에서 새로 생긴 경고**이고 대상은 mcp SDK 의 FastMCP `Settings` 모델이다
+  (우리 코드가 아니다). `pydantic-settings<2.14` 를 쓰면 사라지는 것을 실측 확인했으나 **핀하지 않는다**
+  — 우리가 직접 쓰지 않는 전이 의존성을 묶으면 상류가 고친 뒤에도 사용자를 낡은 버전에 잡아두게 된다.
+  MCP 로그에서 이 두 줄은 무시하고 `Server disconnected` / `Git operation failed` 같은 실제 오류만 볼 것.
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.
