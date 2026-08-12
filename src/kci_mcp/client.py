@@ -78,10 +78,12 @@ class KciClient:
                     **filters) -> tuple[list[Article], dict]:
         """search() + 회수 메타 — 조용한 절단 방지.
 
-        meta = {field, term, total, fetched, truncated}
-          total    : KCI 가 보고한 해당 축의 전체 건수(`outputData/result/total`)
-          fetched  : 실제 회수·중복제거 후 반환 건수
-          truncated: fetched < total (= max_records 상한에 걸려 잘렸다는 뜻)
+        meta = {field, term, total, fetched, truncated, total_mismatch, sweeps}
+          total         : KCI 가 보고한 해당 축의 전체 건수(`outputData/result/total`)
+          fetched       : 실제 회수·중복제거 후 반환 건수
+          truncated     : **우리 상한(max_records)에 걸렸다** — 올리면 늘어난다
+          total_mismatch: 끝까지 페이징했는데 total 에 못 미쳤다 — 올려도 늘지 않는다
+          sweeps        : 1보다 크면 불완전 회수를 재스윕으로 보정한 것
         절단 여부를 호출자에게 **반드시** 노출한다 — 상한에 걸린 결과를 완전한 코퍼스로
         오인하면 계량서지 분석 전체가 무효가 된다.
         """
@@ -148,7 +150,9 @@ class KciClient:
         #    떴다(실측: '교육격차' total 205/실회수 204, '학부모' 4766/4645 — 중복제거 0건).
         #    KCI 의 total 은 **실제 서빙량보다 클 수 있다**. 그때 "max_records 를 올리라"는 조언은
         #    틀린 처방이며 사용자를 무한 재수집으로 몬다.
-        hit_cap = len(out) >= max_records
+        # 상한에 닿았더라도 total 을 다 채웠으면 잘린 것이 없다 — 그때 truncated 를 붙이면
+        # 전수 수집한 결과에 경고가 달려 무의미한 재수집을 유도한다.
+        hit_cap = len(out) >= max_records and (not total or len(out) < total)
         return out, {"field": field, "term": value, "total": total, "fetched": len(out),
                      "truncated": hit_cap,           # 우리 상한에 걸림 → 올리면 해결된다
                      "sweeps": sweeps,               # 1보다 크면 불완전 회수를 보정한 것
@@ -201,9 +205,12 @@ class KciClient:
                     new += 1
                 axes.append({**m, "new": new})
                 if len(out) >= max_records:
-                    stopped_early = True
+                    # ⚠️ **마지막 축이면 남은 축이 없으므로 '조기 중단'이 아니다.**
+                    #    그대로 True 로 두면 전수 수집한 코퍼스에 truncated 가 붙어,
+                    #    사용자가 max_records 를 올려 무의미한 재수집을 반복하게 된다.
+                    stopped_early = not (term is terms[-1] and field is fields[-1])
                     break
-            if stopped_early:
+            if len(out) >= max_records:
                 break
         out = out[:max_records]
         planned = len(terms) * len(fields)

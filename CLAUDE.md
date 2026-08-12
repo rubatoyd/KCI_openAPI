@@ -207,6 +207,18 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   ⚠️ **지적 6건이 전부 도구 계층인데 그 계층 테스트가 없었다** — 클라이언트 테스트를 다 통과하면서
   새어나갔다. `tests/test_server_tools.py` 신설(60종). scienceON 에는 있던 것이 kci 에만 없었다.
 
+- 🔬 **scienceON 리뷰의 공통 지적 반영 (2026-08-11)** — 자매 프로젝트 PR 리뷰에서 나온 7건 중
+  이쪽에도 해당하는 것을 확인해 고쳤다. **한쪽에서 나온 지적은 반대쪽도 확인한다**는 규칙의 적용.
+  ① **마지막 축이 상한을 채우면 `stopped_early` 오탐** — 남은 축이 없는데 조기 중단으로 표시돼
+     전수 수집한 코퍼스에 절단 경고가 붙었다. `term is terms[-1] and field is fields[-1]` 로 판정.
+  ② `search_meta` docstring 이 옛 판정(`truncated: fetched < total`)을 설명 → 실제 스키마로 갱신.
+  ③ `__version__` 이 `0.1.3` 으로 방치(실제 0.3.x) → `importlib.metadata` 조회로 변경.
+  ④ **한 겹 더 깊은 오탐** — `max_records` 가 실제 `total` 과 같으면 전부 회수했는데도 `hit_cap` 이
+     True 였다. `hit_cap = 상한도달 and fetched < total` 로 정정. **테스트를 쓰다가 발견했다.**
+  ⑤ 전 모듈 임포트 테스트 추가(`cli.py` 처럼 어떤 테스트도 임포트하지 않는 모듈이 있었다). 60 → **72**.
+  ℹ️ 자격증명 유출(scienceON 최우선 지적)은 **kci 에는 해당 없다** — `raise_for_status()` 가
+  키 포함 URL 을 메시지에 넣는다는 것을 알고 처음부터 피했고 주석으로 남겨두었다.
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.
