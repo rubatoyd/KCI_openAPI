@@ -68,6 +68,11 @@ jobs:
       - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
+          # ⚠️ 이벤트에서 온 값은 run 블록에 **직접 보간하지 않는다** — env 로 넘겨야 한다.
+          #    `TAG="${{ github.event.inputs.tag }}"` 형태는 입력이 셸 코드로 해석될 수 있는
+          #    전형적인 스크립트 주입 패턴이다(트리거 권한이 메인테이너뿐이라 실위험은 낮으나
+          #    패턴 자체를 남기지 않는다).
+          TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
+          ASSET: ${{ matrix.asset }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.event.release.tag_name }}"
-          gh release upload "$TAG" "${{ matrix.asset }}" --clobber
+          gh release upload "$TAG" "$ASSET" --clobber

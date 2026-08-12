@@ -23,6 +23,8 @@ jobs:
           - os: ubuntu-latest
             asset: kci-openapi-mcp-linux-x64.mcpb
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read        # 빌드 job 은 읽기만 필요 — 기본 권한에 기대지 않는다
     defaults:
       run:
         shell: bash
@@ -105,11 +107,12 @@ jobs:
       - name: GitHub Release 생성 + 전체 자산 첨부
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}   # 이벤트 값은 env 경유 — 스크립트 주입 차단
         run: |
-          gh release create "${{ github.ref_name }}" \
+          gh release create "$TAG" \
             kci-openapi-mcp.mcpb binaries/*.mcpb \
-            --title "${{ github.ref_name }}" \
-            --notes "KCI(Korea Citation Index) MCP ${{ github.ref_name }} — Claude Desktop .mcpb 번들 (경량 + OS별 자체완결)"
+            --title "$TAG" \
+            --notes "KCI(Korea Citation Index) MCP $TAG — Claude Desktop .mcpb 번들 (경량 + OS별 자체완결)"
 
       - name: mcp-publisher 설치
         run: |
