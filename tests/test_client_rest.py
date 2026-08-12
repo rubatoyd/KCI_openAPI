@@ -7,7 +7,8 @@ from tests import samples
 
 
 def _client(monkeypatch, capture=None):
-    c = KciClient(api_key="TEST")
+    # throttle=0 필수 — 모킹 테스트에 실제 대기(0.5s/페이지)를 넣으면 스위트가 수 분으로 늘어난다.
+    c = KciClient(api_key="TEST", throttle=0)
 
     def fake_call(api_code, params):
         if capture is not None:

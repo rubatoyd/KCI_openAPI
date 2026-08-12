@@ -74,7 +74,8 @@ class KciClient:
             raise KciError(str(e)) from e
 
     def search_meta(self, value: str, *, field: str = "title", max_records: int = 1000,
-                    display: int = 100, **filters) -> tuple[list[Article], dict]:
+                    display: int = 100, retry_incomplete: int = 1,
+                    **filters) -> tuple[list[Article], dict]:
         """search() + 회수 메타 — 조용한 절단 방지.
 
         meta = {field, term, total, fetched, truncated}
@@ -84,7 +85,11 @@ class KciClient:
         절단 여부를 호출자에게 **반드시** 노출한다 — 상한에 걸린 결과를 완전한 코퍼스로
         오인하면 계량서지 분석 전체가 무효가 된다.
         """
-        rows = min(display, 100)  # 요청 크기와 종료식이 항상 일치하도록 단일 변수로 클램프
+        # 요청 크기와 종료식이 항상 일치하도록 단일 변수로 클램프.
+        # ⚠️ 하한 1 필수 — displayCount=0 이면 KCI 가 total 까지 0 으로 돌려준다.
+        #    그러면 결과가 205건 있는데도 "total 0"(= 결과 없음)으로 보고돼 조용한 오보가 된다.
+        rows = max(1, min(display, 100))
+        max_records = max(1, max_records)
         out: list[Article] = []
         seen: set = set()
         page = 1
@@ -108,9 +113,47 @@ class KciClient:
                 break
             page += 1
             time.sleep(self.throttle)
+        # ── 불완전 회수 보정 ────────────────────────────────────────────────────
+        # KCI 는 **다중 페이지 질의에서 결과가 흔들린다**(2026-08-11 실측: '교육격차'를 동일 조건으로
+        # 3회 돌리면 회수량 204/204/205, 레코드 합집합 205·교집합 203 — 2건이 호출마다 오간다).
+        # 페이지 경계에서 정렬이 미세하게 바뀌면 한 건이 두 페이지 사이로 빠지기 때문으로 보인다.
+        # 단일 페이지 질의(64건)는 완전히 안정적이었다.
+        # → total 에 못 미쳤고 우리 상한도 아니면 **한 번 더 훑어 합집합**을 취한다.
+        #   코퍼스 구축에서 1~2건 결손은 재현성 문제로 직결되므로 탐지만으로는 부족하다.
+        sweeps = 1
+        while (retry_incomplete > 0 and total and len(out) < min(total, max_records)
+               and len(out) < max_records):
+            retry_incomplete -= 1
+            sweeps += 1
+            before = len(out)
+            page = 1
+            while len(out) < max_records and page <= 1000:
+                _, arts2 = self.search_page(value, field=field, page=page, display=rows, **filters)
+                if not arts2:
+                    break
+                for a in arts2:
+                    k = a.dedup_key()
+                    if k not in seen:
+                        seen.add(k)
+                        out.append(a)
+                if total and page * rows >= total:
+                    break
+                page += 1
+                time.sleep(self.throttle)
+            if len(out) == before:      # 더 건질 게 없으면 반복 중단
+                break
+
         out = out[:max_records]
+        # ⚠️ truncated 와 total_mismatch 를 **분리**한다 (2026-08-11 적대적 검증에서 발견).
+        #    예전엔 `fetched < total` 하나로 뭉쳐 있어, 페이징을 끝까지 돌았는데도 truncated=True 가
+        #    떴다(실측: '교육격차' total 205/실회수 204, '학부모' 4766/4645 — 중복제거 0건).
+        #    KCI 의 total 은 **실제 서빙량보다 클 수 있다**. 그때 "max_records 를 올리라"는 조언은
+        #    틀린 처방이며 사용자를 무한 재수집으로 몬다.
+        hit_cap = len(out) >= max_records
         return out, {"field": field, "term": value, "total": total, "fetched": len(out),
-                     "truncated": bool(total) and len(out) < total}
+                     "truncated": hit_cap,           # 우리 상한에 걸림 → 올리면 해결된다
+                     "sweeps": sweeps,               # 1보다 크면 불완전 회수를 보정한 것
+                     "total_mismatch": (not hit_cap) and bool(total) and len(out) < total}
 
     def search(self, value: str, *, field: str = "title", max_records: int = 1000,
                display: int = 100, **filters) -> list[Article]:
@@ -172,6 +215,9 @@ class KciClient:
             "max_records": max_records,
             "truncated": bool(stopped_early or len(axes) < planned
                               or any(a["truncated"] for a in axes)),
+            # KCI 가 보고한 total 이 실제 서빙량보다 큰 축이 하나라도 있으면 표시.
+            # 절단과 달리 max_records 를 올려도 해결되지 않는다 → 조언이 달라야 한다.
+            "total_mismatch": any(a.get("total_mismatch") for a in axes),
         }
         if contains:
             subs = [contains] if isinstance(contains, str) else list(contains)
@@ -184,6 +230,13 @@ class KciClient:
                 f"⚠️ 절단됨 — max_records={max_records} 상한에 걸렸습니다. "
                 f"실행한 검색축 {len(axes)}/{planned}개의 total 합은 {meta['union_upper_bound']}건"
                 f"(합집합 상한)입니다. max_records 를 그 위로 올려 재수집하세요."
+            )
+        elif meta["total_mismatch"]:
+            # 상한에 걸리지 않았는데 total 에 못 미친 경우 — 올려도 해결되지 않는다.
+            meta["notice"] = (
+                "ℹ️ KCI 가 보고한 total 보다 실제 회수량이 적습니다. 페이징은 끝까지 돌았으므로 "
+                "**절단이 아니며 max_records 를 올려도 늘지 않습니다** — KCI 의 total 이 실제 서빙 "
+                "가능 건수보다 큰 경우입니다(실측 확인). 회수량을 확정 수치로 쓰세요."
             )
         return out, meta
 

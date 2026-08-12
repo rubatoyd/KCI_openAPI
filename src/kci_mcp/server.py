@@ -36,6 +36,26 @@ def _safe(fn):
     return wrapper
 
 
+_SORT_NM = {"title", "author", "pubiYr"}
+_SORT_DIR = {"asc", "desc"}
+
+
+def _check_sort(sort_by: str | None, sort_dir: str | None) -> dict | None:
+    """정렬 인자를 **보내기 전에** 검증. 잘못된 값의 실제 증상이 서로 달라 둘 다 위험하다.
+
+    실측(2026-08-11): `sort_dir=sideways` → KCI 가 **HTTP 500**(원인 불명 오류로 보임),
+    `sort_by=pubYear`(pubiYr 오타) → **조용히 무시**되어 정렬한 줄 알고 넘어간다.
+    둘 다 여기서 막고 허용값을 알려준다.
+    """
+    if sort_by and sort_by not in _SORT_NM:
+        return {"error": f"sort_by 값이 잘못됨: {sort_by!r}. 허용값: {sorted(_SORT_NM)} "
+                         f"(⚠️ 잘못된 값은 KCI 가 조용히 무시해 정렬이 적용되지 않습니다)"}
+    if sort_dir and sort_dir.lower() not in _SORT_DIR:
+        return {"error": f"sort_dir 값이 잘못됨: {sort_dir!r}. 허용값: {sorted(_SORT_DIR)} "
+                         f"(⚠️ 잘못된 값은 KCI 가 HTTP 500 으로 응답합니다)"}
+    return None
+
+
 # 도구 안전성 힌트(MCP annotations) — 디렉터리 심사·클라이언트 표시에 사용.
 # 전부 외부 API 조회(openWorld). collect 만 파일 생성(쓰기, 비파괴).
 _READ = {"readOnlyHint": True, "openWorldHint": True}
@@ -85,17 +105,22 @@ def kci_search(title: str, author: str | None = None, journal: str | None = None
                 "hint": "kci_harvest 로 OAI(무인증) 날짜범위 수확 후 contains 로 필터하세요.",
                 "suggested_contains": [title]}
     from .client import KciClient, KciError
+    bad = _check_sort(sort_by, sort_dir)
+    if bad:
+        return bad
     filters = {k: v for k, v in {
         "author": author, "journal": journal, "keyword": keyword,
         "abstract": abstract, "doi": doi, "dateFrom": date_from, "dateTo": date_to,
         "institution": institution, "sortNm": sort_by, "sortDir": sort_dir,
     }.items() if v}
+    # ⚠️ 요청 크기는 하한 1 — displayCount=0 이면 KCI 가 total 까지 0 으로 준다.
+    #    rows=0 을 그대로 넘기면 결과가 205건 있어도 "total 0"(결과 없음)으로 오보된다.
+    eff = max(1, min(rows, 100))
     try:
-        recs, meta = KciClient().search_meta(title, max_records=min(rows, 100),
-                                             display=min(rows, 100), **filters)
+        recs, meta = KciClient().search_meta(title, max_records=eff, display=eff, **filters)
     except KciError as e:
         return {"error": str(e)}
-    recs = recs[:rows]
+    recs = recs[:rows] if rows > 0 else []
     out = {"count": len(recs), "total": meta["total"],
            "truncated": bool(meta["total"]) and len(recs) < meta["total"],
            "note": "keywords/issn/uci 는 articleSearch 미제공 — kci_detail 로 보강",
@@ -150,6 +175,9 @@ def kci_references(title: str, author: str | None = None, pub_year: str | None =
     if get_api_key() is None:
         return {"error": "KCI_API_KEY 미설정 — referenceSearch 는 REST 전용(OAI 미제공)."}
     from .client import KciClient, KciError
+    bad = _check_sort(sort_by, sort_dir)
+    if bad:
+        return bad
     filters = {k: v for k, v in {"author": author, "pubiYr": pub_year,
                                  "institution": institution,
                                  "sortNm": sort_by, "sortDir": sort_dir}.items() if v}
@@ -261,9 +289,12 @@ def kci_collect(title: str | None = None, terms: list[str] | None = None, set_sp
     base = out_dir or str(Path.home() / "kci-output")
     paths = export(recs, fmts, base, nm)
     out = {"count": len(recs), "backend": backend, "reason": reason,
-           "truncated": meta.get("truncated", False), "meta": meta, "files": paths}
+           "truncated": meta.get("truncated", False),
+           "total_mismatch": meta.get("total_mismatch", False), "meta": meta, "files": paths}
     if meta.get("warning"):
         out["warning"] = meta["warning"]
+    if meta.get("notice"):          # 절단이 아니라 KCI total 과의 불일치 — 조언이 다르다
+        out["notice"] = meta["notice"]
     return out
 
 
