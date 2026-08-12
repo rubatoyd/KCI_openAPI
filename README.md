@@ -39,7 +39,7 @@ MCP 로 붙였다면 `kci_status`(연결 점검) → `kci_harvest`(무인증 수
 규격: [docs/KCI_API_GUIDE.md](docs/KCI_API_GUIDE.md) · [docs/KCI_OAI_PMH_GUIDE.md](docs/KCI_OAI_PMH_GUIDE.md) · 설계: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## 현재 상태
-- ✅ 구현·**REST/OAI 라이브 검증** 완료 · pytest 38 + MCP 프로토콜 스모크 · 도구 annotations
+- ✅ 구현·**REST/OAI 라이브 검증** 완료 · pytest 51 + MCP 프로토콜 스모크 · 도구 annotations
 - ✅ **공식 MCP 레지스트리 발행됨**: `io.github.rubatoyd/kci-openapi-mcp`
 - ✅ Claude Desktop **자체완결 `.mcpb`**(win/mac/linux, Python·uv 불필요) + Claude Code `.mcp.json`
 - ⚠️ `mcp` SDK는 **1.x 고정**(`mcp>=1.2.0,<2`) — 2.0 에서 `mcp.server.fastmcp` 가 제거되어 상한 없이는 기동 실패
@@ -157,7 +157,27 @@ kci collect --config config/borderline_slow.yaml
 >   1회 100건이 상한**이라 절단분을 이어 받을 수 없다. 넘쳤다면 `sort_dir` 를 뒤집어(asc↔desc)
 >   반대쪽 100건을 받아 합집합을 취하는 것이 유일한 우회책이며, 경고 문구가 그렇게 안내한다.
 > - `kci_search`·`kci_references` 는 `institution`(발행기관) · `sort_by`(title/author/pubiYr) ·
->   `sort_dir`(asc/desc) 필터를 지원한다.
+>   `sort_dir`(asc/desc) 필터를 지원한다. 잘못된 값은 **보내기 전에 막는다** — `sort_dir` 오타는
+>   KCI 가 HTTP 500 을 내고 `sort_by` 오타는 **조용히 무시**되어 정렬한 줄 알고 넘어가기 때문이다.
+
+#### ⚠️ 회수량과 `total` 이 다를 때 — 절단인가 아닌가 (v0.3.0)
+
+적대적 검증에서 **KCI 가 보고한 `total` 이 실제 서빙량보다 클 수 있다**는 것이 확인됐다
+(실측: '교육격차' total 205 / 실회수 204, '학부모' 4766 / 4645, 중복제거 0건).
+그래서 두 사건을 **서로 다른 플래그**로 구분한다.
+
+| 플래그 | 뜻 | 대처 |
+|---|---|---|
+| `truncated: true` | **우리 상한(`max_records`)에 걸렸다** | 상한을 올려 재수집하면 해결된다 |
+| `total_mismatch: true` | 페이징을 끝까지 돌았는데 `total` 에 못 미쳤다 | **올려도 늘지 않는다.** 회수량을 확정 수치로 쓸 것 |
+
+> v0.3.0 이전에는 이 둘을 `truncated` 하나로 뭉쳐, 전수 수집을 마친 뒤에도 "상한을 올리라"는
+> **틀린 조언**이 붙었다. 그 값을 읽던 코드가 있다면 의미가 달라졌으니 확인할 것.
+
+**불완전 회수 자동 보정** — 다중 페이지 질의는 호출마다 결과가 흔들린다(동일 조건 3회에
+204/204/205, 레코드 합집합 205·교집합 203). 단일 페이지 질의는 안정적이다. 그래서 `total` 에
+못 미치고 상한도 아니면 **한 번 더 훑어 합집합**을 취한다(실측: 보정 off 204 고정 → on 205 완전 회수).
+`meta.sweeps` 가 1보다 크면 보정이 돌았다는 뜻이다. 비용이 부담되면 `retry_incomplete=0` 으로 끈다.
 
 ## 인증키 발급
 
