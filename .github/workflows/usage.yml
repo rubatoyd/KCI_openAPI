@@ -35,15 +35,18 @@ jobs:
 
       - name: 변경분만 커밋
         run: |
-          # ⚠️ `git diff` 는 **untracked 파일을 못 본다** — 첫 실행에서 새로 만든 usage.csv 가
-          #    조용히 커밋되지 않았다(실측). status 로 판정한다.
-          if [ -z "$(git status --porcelain -- docs/usage.csv docs/usage.svg README.md)" ]; then
-            echo "변경 없음 — 커밋하지 않는다"
-            exit 0
-          fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/usage.csv docs/usage.svg README.md
+          # ⚠️ 변경 판정은 **git add 뒤 스테이징된 차이**로 한다.
+          #    · `git diff`(unstaged)는 untracked 새 파일을 못 본다 — 첫 실행분이 조용히 누락됐다.
+          #    · `git status --porcelain`은 줄바꿈 정규화(CRLF→LF)만 다른 파일도 변경으로 보고해,
+          #      통과시켜 놓고 `git commit` 이 "nothing to commit" 으로 죽었다(실측).
+          #    `--cached` 는 정규화까지 반영된 실제 커밋 대상을 본다.
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋하지 않는다"
+            exit 0
+          fi
           git commit -m "chore: 사용량 기록 $(date -u +%Y-%m-%d)"
           # ⚠️ 그 사이 main 이 앞서 있으면 push 가 거절된다(실측: 수동 실행을 겹쳐 돌렸을 때 발생).
           #    rebase 후 재시도한다 — usage.csv 는 이 워크플로만 건드리므로 충돌하지 않는다.
