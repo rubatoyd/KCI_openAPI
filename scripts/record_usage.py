@@ -66,6 +66,98 @@ def load() -> dict[str, dict]:
         return {row["date"]: row for row in csv.DictReader(f)}
 
 
+README = Path(os.environ.get("USAGE_README", "README.md"))
+CHART = Path(os.environ.get("USAGE_SVG", "docs/usage.svg"))
+MARK_A, MARK_B = "<!-- usage:start -->", "<!-- usage:end -->"
+
+# GitHub 은 README 의 라이트/다크 테마를 오가므로 **양쪽에서 읽히는 색**만 쓴다.
+# (SVG 안의 <style> media query 는 GitHub 이미지 렌더링에서 신뢰할 수 없다.)
+_CLONE, _VIEW, _AXIS = "#3b82f6", "#f59e0b", "#8b949e"
+
+
+def write_chart(rows: dict[str, dict]) -> bool:
+    """일별 클론·조회 추이를 **의존성 없이** SVG 로 그린다.
+
+    matplotlib 같은 것을 끌어오면 워크플로가 무거워지고 실패 지점이 는다.
+    선 두 개짜리 그래프에 그럴 이유가 없어 좌표를 직접 찍는다.
+    """
+    dates = sorted(rows)
+    if len(dates) < 2:
+        return False
+    clones = [int(rows[d].get("clones") or 0) for d in dates]
+    views = [int(rows[d].get("views") or 0) for d in dates]
+    hi = max(max(clones), max(views), 1)
+
+    W, H, PAD_L, PAD_B, PAD_T = 720, 200, 34, 26, 16
+    iw, ih = W - PAD_L - 10, H - PAD_B - PAD_T
+
+    def pts(vals):
+        n = len(vals) - 1 or 1
+        return " ".join(f"{PAD_L + i * iw / n:.1f},{PAD_T + ih - v * ih / hi:.1f}"
+                        for i, v in enumerate(vals))
+
+    # y 눈금 3개 · x 라벨은 처음/중간/끝만(겹침 방지)
+    ticks = "".join(
+        f'<line x1="{PAD_L}" y1="{PAD_T + ih - f * ih:.1f}" x2="{W - 10}" '
+        f'y2="{PAD_T + ih - f * ih:.1f}" stroke="{_AXIS}" stroke-opacity=".25"/>'
+        f'<text x="{PAD_L - 6}" y="{PAD_T + ih - f * ih + 4:.1f}" font-size="10" '
+        f'fill="{_AXIS}" text-anchor="end">{int(hi * f)}</text>'
+        for f in (0, 0.5, 1))
+    xl = "".join(
+        f'<text x="{PAD_L + i * iw / (len(dates) - 1):.1f}" y="{H - 8}" font-size="10" '
+        f'fill="{_AXIS}" text-anchor="{a}">{dates[i][5:]}</text>'
+        for i, a in ((0, "start"), (len(dates) // 2, "middle"), (len(dates) - 1, "end")))
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" \
+viewBox="0 0 {W} {H}" font-family="-apple-system,Segoe UI,sans-serif" role="img" \
+aria-label="일별 클론·조회 추이">
+<title>일별 클론·조회 추이 ({dates[0]} ~ {dates[-1]})</title>
+{ticks}{xl}
+<polyline fill="none" stroke="{_CLONE}" stroke-width="2" points="{pts(clones)}"/>
+<polyline fill="none" stroke="{_VIEW}" stroke-width="2" points="{pts(views)}"/>
+<circle cx="{W - 150}" cy="12" r="4" fill="{_CLONE}"/>
+<text x="{W - 140}" y="16" font-size="11" fill="{_AXIS}">clones</text>
+<circle cx="{W - 78}" cy="12" r="4" fill="{_VIEW}"/>
+<text x="{W - 68}" y="16" font-size="11" fill="{_AXIS}">views</text>
+</svg>
+"""
+    CHART.parent.mkdir(parents=True, exist_ok=True)
+    CHART.write_text(svg, encoding="utf-8")
+    return True
+
+
+def update_readme(rows: dict[str, dict], snap: dict, today: str) -> None:
+    """README 의 표시 블록을 갱신한다 (마커가 있을 때만).
+
+    조회·클론은 **최근 14일 합**이다 — GitHub 가 그 창만 주므로 '누적'이라 쓰면 거짓이 된다.
+    다운로드는 릴리스 자산 누적이라 성격이 다르니 따로 표기한다.
+    """
+    if not README.exists():
+        return
+    text = README.read_text(encoding="utf-8")
+    if MARK_A not in text or MARK_B not in text:
+        print(f"  (README 에 {MARK_A} 마커가 없어 건너뜀)")
+        return
+
+    recent = sorted(rows)[-14:]
+    def s(key: str) -> int:
+        return sum(int(rows[d].get(key) or 0) for d in recent)
+
+    dl = snap.get("release_downloads") or "—"
+    chart = f"\n>\n> ![일별 클론·조회 추이]({CHART.as_posix()})\n" if write_chart(rows) else ""
+    body = (f"> 📈 **사용량** — 최근 14일 조회 **{s('views'):,}**회(고유 {s('view_uniques'):,}) · "
+            f"클론 **{s('clones'):,}**회(고유 {s('clone_uniques'):,}) · "
+            f"릴리스 자산 누적 다운로드 **{dl}**"
+            f"{chart}"
+            f">\n> <sub>{today} 자동 갱신 · 전체 이력은 [`docs/usage.csv`](docs/usage.csv). "
+            f"GitHub 트래픽 통계는 14일 창만 제공하므로 이 저장소가 매일 찍어 누적한다.</sub>")
+
+    head, rest = text.split(MARK_A, 1)
+    _old, tail = rest.split(MARK_B, 1)
+    README.write_text(f"{head}{MARK_A}\n{body}\n{MARK_B}{tail}", encoding="utf-8")
+    print(f"  README 사용량 블록 갱신")
+
+
 def main() -> int:
     if not REPO or not TOKEN:
         print("GITHUB_REPOSITORY / GITHUB_TOKEN 이 필요합니다.", file=sys.stderr)
@@ -121,6 +213,8 @@ def main() -> int:
         w.writeheader()
         for d in sorted(rows):
             w.writerow({k: rows[d].get(k, "") for k in FIELDS})
+
+    update_readme(rows, snap, today)
 
     print(f"{REPO}: {before} → {len(rows)}행  ({OUT})")
     print(f"  오늘({today}) 스냅샷: 다운로드 {snap['release_downloads']} · "
