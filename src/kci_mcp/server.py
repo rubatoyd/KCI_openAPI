@@ -40,20 +40,31 @@ _SORT_NM = {"title", "author", "pubiYr"}
 _SORT_DIR = {"asc", "desc"}
 
 
-def _check_sort(sort_by: str | None, sort_dir: str | None) -> dict | None:
-    """정렬 인자를 **보내기 전에** 검증. 잘못된 값의 실제 증상이 서로 달라 둘 다 위험하다.
+def _norm_sort(sort_by: str | None, sort_dir: str | None):
+    """정렬 인자를 **보내기 전에** 검증하고 KCI 표기로 정규화한다.
 
-    실측(2026-08-11): `sort_dir=sideways` → KCI 가 **HTTP 500**(원인 불명 오류로 보임),
-    `sort_by=pubYear`(pubiYr 오타) → **조용히 무시**되어 정렬한 줄 알고 넘어간다.
-    둘 다 여기서 막고 허용값을 알려준다.
+    잘못된 값의 증상이 서로 달라 둘 다 위험하다 — `sort_dir` 오타는 KCI 가 HTTP 500 을 내고,
+    `sort_by` 오타는 **조용히 무시**되어 정렬한 줄 알고 넘어간다.
+
+    ⚠️ 검증만 하고 원본을 그대로 보내면 안 된다. 소문자로 검사한 뒤 대문자를 전송하면
+       "검증을 통과한 값"과 "실제로 보낸 값"이 달라져 검증이 무의미해진다.
+    반환: (오류 dict | None, 정규화된 sort_by, 정규화된 sort_dir)
     """
-    if sort_by and sort_by not in _SORT_NM:
-        return {"error": f"sort_by 값이 잘못됨: {sort_by!r}. 허용값: {sorted(_SORT_NM)} "
-                         f"(⚠️ 잘못된 값은 KCI 가 조용히 무시해 정렬이 적용되지 않습니다)"}
-    if sort_dir and sort_dir.lower() not in _SORT_DIR:
-        return {"error": f"sort_dir 값이 잘못됨: {sort_dir!r}. 허용값: {sorted(_SORT_DIR)} "
-                         f"(⚠️ 잘못된 값은 KCI 가 HTTP 500 으로 응답합니다)"}
-    return None
+    nm = dir_ = None
+    if sort_by:
+        cand = {v.lower(): v for v in _SORT_NM}.get(sort_by.lower())
+        if cand is None:
+            return ({"error": f"sort_by 값이 잘못됨: {sort_by!r}. 허용값: {sorted(_SORT_NM)} "
+                              f"(⚠️ 잘못된 값은 KCI 가 조용히 무시해 정렬이 적용되지 않습니다)"},
+                    None, None)
+        nm = cand
+    if sort_dir:
+        if sort_dir.lower() not in _SORT_DIR:
+            return ({"error": f"sort_dir 값이 잘못됨: {sort_dir!r}. 허용값: {sorted(_SORT_DIR)} "
+                              f"(⚠️ 잘못된 값은 KCI 가 HTTP 500 으로 응답합니다)"},
+                    None, None)
+        dir_ = sort_dir.lower()
+    return None, nm, dir_
 
 
 # 도구 안전성 힌트(MCP annotations) — 디렉터리 심사·클라이언트 표시에 사용.
@@ -105,7 +116,7 @@ def kci_search(title: str, author: str | None = None, journal: str | None = None
                 "hint": "kci_harvest 로 OAI(무인증) 날짜범위 수확 후 contains 로 필터하세요.",
                 "suggested_contains": [title]}
     from .client import KciClient, KciError
-    bad = _check_sort(sort_by, sort_dir)
+    bad, sort_by, sort_dir = _norm_sort(sort_by, sort_dir)
     if bad:
         return bad
     filters = {k: v for k, v in {
@@ -121,13 +132,19 @@ def kci_search(title: str, author: str | None = None, journal: str | None = None
     except KciError as e:
         return {"error": str(e)}
     recs = recs[:rows] if rows > 0 else []
+    # ⚠️ meta 의 플래그를 재계산하지 않는다. `fetched < total` 로 다시 세면 client 에서 없앤
+    #    오탐 공식이 되살아나고, kci_collect 와 의미가 어긋난다.
     out = {"count": len(recs), "total": meta["total"],
-           "truncated": bool(meta["total"]) and len(recs) < meta["total"],
+           "truncated": meta["truncated"], "total_mismatch": meta["total_mismatch"],
            "note": "keywords/issn/uci 는 articleSearch 미제공 — kci_detail 로 보강",
            "records": [r.to_row() for r in recs]}
-    if out["truncated"]:
+    if meta["truncated"]:
         out["warning"] = (f"전체 {meta['total']}건 중 {len(recs)}건만 반환 — rows 상한(최대 100). "
                           f"전건 수집은 kci_collect 를 사용하세요.")
+    elif meta["total_mismatch"]:
+        out["notice"] = ("ℹ️ KCI 가 보고한 total 보다 실제 회수량이 적습니다. rows 상한 때문이 아니므로 "
+                         "rows 를 올려도 늘지 않습니다 — KCI 의 total 이 실제 서빙 가능 건수보다 큰 "
+                         "경우입니다. 회수량을 확정 수치로 쓰세요.")
     return out
 
 
@@ -175,7 +192,7 @@ def kci_references(title: str, author: str | None = None, pub_year: str | None =
     if get_api_key() is None:
         return {"error": "KCI_API_KEY 미설정 — referenceSearch 는 REST 전용(OAI 미제공)."}
     from .client import KciClient, KciError
-    bad = _check_sort(sort_by, sort_dir)
+    bad, sort_by, sort_dir = _norm_sort(sort_by, sort_dir)
     if bad:
         return bad
     filters = {k: v for k, v in {"author": author, "pubiYr": pub_year,
@@ -187,11 +204,17 @@ def kci_references(title: str, author: str | None = None, pub_year: str | None =
         return {"error": str(e)}
     out = {"count": len(refs), "total": meta["total"], "truncated": meta["truncated"],
            "references": refs}
-    if meta["truncated"]:
+    if meta["truncated"] and meta["api_capped"]:
         out["warning"] = (
-            f"⚠️ 절단됨 — KCI 가 보고한 total 은 {meta['total']}건인데 {len(refs)}건만 회수했습니다. "
-            f"referenceSearch 는 page 파라미터가 없어 1회 {meta['api_page_limit']}건이 API 상한입니다. "
+            f"⚠️ 절단됨(API 상한) — total 이 {meta['total']}건인데 referenceSearch 는 page 파라미터가 "
+            f"없어 1회 {meta['api_page_limit']}건이 한계입니다. rows 를 올려도 넘을 수 없으므로, "
             f"sort_dir 를 뒤집어(asc↔desc) 반대쪽을 추가 수집한 뒤 합집합을 취하세요."
+        )
+    elif meta["truncated"]:
+        out["warning"] = (
+            f"⚠️ 절단됨(rows 상한) — total 은 {meta['total']}건이고 API 는 전량을 반환했지만 "
+            f"rows={len(refs)} 로 잘랐습니다. **rows 를 {meta['total']} 이상으로 올리면 됩니다.** "
+            f"(sort_dir 반전은 이 경우 같은 레코드만 다시 옵니다 — API 상한을 넘겼을 때만 유효합니다.)"
         )
     return out
 
@@ -246,10 +269,16 @@ def kci_collect(title: str | None = None, terms: list[str] | None = None, set_sp
                 year_from: int | None = None, year_to: int | None = None,
                 date_from: str | None = None, date_until: str | None = None,
                 contains: list[str] | None = None, formats: list[str] | None = None,
-                max_records: int = 500, out_dir: str | None = None, name: str | None = None) -> dict:
+                max_records: int = 500, retry_incomplete: int = 1,
+                out_dir: str | None = None, name: str | None = None) -> dict:
     """[혼용] 요청 성격·키 유무로 REST↔OAI 자동 선택 후 수집 → 파일 저장.
 
     - terms/title 있고 인증키 보유 → REST 변형어 합집합 검색(year_from/to·contains 적용)
+
+    retry_incomplete: 다중 페이지 질의는 호출마다 결과가 흔들려 1~2건이 빠질 수 있다. 기본 1 이면
+      total 에 못 미쳤을 때 검색축마다 **한 번 더 훑어 합집합**을 취한다(meta.sweeps_total 로 확인).
+      ⚠️ 보정이 걸린 축은 전체를 재페이징하므로 요청 수가 그 축만큼 늘어난다. 대규모 수집에서
+      비용이 부담되면 0 으로 끈다 — 대신 결손이 남고 meta.total_mismatch 로만 표시된다.
     - terms/title 있고 키 없음 → OAI 수확(date_from/until) + terms/contains 로컬 필터
     - terms/title 없음 → OAI 세트/날짜범위 전수 수확
     out_dir 미지정 시 홈의 kci-output/. OAI 날짜는 YYYY-MM-DD, REST 연도는 정수.
@@ -268,7 +297,8 @@ def kci_collect(title: str | None = None, terms: list[str] | None = None, set_sp
             try:
                 recs, meta = KciClient().search_terms_meta(
                     kws, year_from=year_from, year_to=year_to,
-                    max_records=max_records, contains=contains)
+                    max_records=max_records, contains=contains,
+                    retry_incomplete=retry_incomplete)
             except KciError as e:
                 return {"error": str(e), "backend": backend, "reason": reason}
         else:

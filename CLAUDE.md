@@ -190,6 +190,23 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   ℹ️ 부수 확인: 한자 검색(`敎育格差`)은 국문과 사실상 같은 결과(KCI 가 정규화), 제목 500자는 HTTP 500.
   회귀 테스트 3 → 51건(KCI). ⚠️ 모킹 테스트는 `throttle=0` 필수 — 실제 대기를 넣으면 스위트가 210초가 된다.
 
+- 🔬 **코드 리뷰 지적 6종 반영 (2026-08-11)** — 리뷰 전용 PR#1 을 만들어 세션 내 리뷰 +
+  `/code-review ultra`(다중 에이전트, PR 코멘트로 회신) 두 경로를 돌렸다. **두 리뷰가 상호 보완적**이었다.
+  ① 🔴 **`kci_search` 가 `meta["truncated"]` 를 버리고 옛 공식으로 재계산** — client 에서 없앤
+     `fetched < total` 오탐이 도구 계층에 되살아나 있었다. `total_mismatch`·`notice` 도 미노출.
+     → meta 플래그를 그대로 쓰고 두 상황을 구분해 안내한다. **(양쪽 리뷰가 동시 지적)**
+  ② 🔴 **`retry_incomplete` 가 문서에만 있고 도달 불가** — `search_terms_meta` 가 인자를 받지도
+     전달하지도 않아 어떤 도구로도 끌 수 없었다. → 인자를 뚫고 `kci_collect` 에 노출. **(세션 리뷰만)**
+  ③ 🟡 **`kci_references` 경고가 두 상한을 혼동** — `total ≤ 100` 인데 `rows` 로 자른 경우에도
+     "sort_dir 를 뒤집으라"고 안내했다. **API 는 이미 전량을 줬으므로 뒤집어도 같은 레코드**가 온다.
+     올바른 처방은 rows 상향. `api_capped` 로 분기. **(ultra 만 — 가장 값진 지적)**
+  ④ 🟡 **정렬 인자를 소문자로 검증하고 원본을 전송** — `sort_dir="ASC"` 가 검증 통과 후 대문자로
+     나갔다. 검증기가 자기 위협 모델을 통과시킨 셈. → `_norm_sort` 로 검증·정규화를 한 곳에서.
+  ⑤ 🟡 하한 클램프가 `search_meta` 에만 적용 → `references_meta`·`citation` 에도 적용.
+  ⑥ 🟢 재시도 루프 중복 조건 제거, `sweeps_total` 집계 추가.
+  ⚠️ **지적 6건이 전부 도구 계층인데 그 계층 테스트가 없었다** — 클라이언트 테스트를 다 통과하면서
+  새어나갔다. `tests/test_server_tools.py` 신설(60종). scienceON 에는 있던 것이 kci 에만 없었다.
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.

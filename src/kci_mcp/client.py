@@ -121,8 +121,7 @@ class KciClient:
         # → total 에 못 미쳤고 우리 상한도 아니면 **한 번 더 훑어 합집합**을 취한다.
         #   코퍼스 구축에서 1~2건 결손은 재현성 문제로 직결되므로 탐지만으로는 부족하다.
         sweeps = 1
-        while (retry_incomplete > 0 and total and len(out) < min(total, max_records)
-               and len(out) < max_records):
+        while retry_incomplete > 0 and total and len(out) < min(total, max_records):
             retry_incomplete -= 1
             sweeps += 1
             before = len(out)
@@ -164,6 +163,7 @@ class KciClient:
     def search_terms_meta(self, terms, *, fields=("title", "keyword"),
                           year_from: int | None = None, year_to: int | None = None,
                           max_records: int = 3000, display: int = 100, contains=None,
+                          retry_incomplete: int = 1,
                           **filters) -> tuple[list[Article], dict]:
         """여러 변형어를 **각 필드(기본 title+keyword)로 개별 검색**해 arti_id/DOI 합집합 + 회수 메타.
 
@@ -189,7 +189,8 @@ class KciClient:
         for term in terms:
             for field in fields:
                 recs, m = self.search_meta(term, field=field, max_records=max_records,
-                                           display=display, **filters)
+                                           display=display,
+                                           retry_incomplete=retry_incomplete, **filters)
                 new = 0
                 for a in recs:
                     k = a.dedup_key()
@@ -218,6 +219,7 @@ class KciClient:
             # KCI 가 보고한 total 이 실제 서빙량보다 큰 축이 하나라도 있으면 표시.
             # 절단과 달리 max_records 를 올려도 해결되지 않는다 → 조언이 달라야 한다.
             "total_mismatch": any(a.get("total_mismatch") for a in axes),
+            "sweeps_total": sum(a.get("sweeps", 1) for a in axes),   # 축 수보다 크면 보정이 돌았다
         }
         if contains:
             subs = [contains] if isinstance(contains, str) else list(contains)
@@ -267,15 +269,21 @@ class KciClient:
            노출하는 것이 특히 중요하다 — 절단을 모르면 부분 집합을 전수로 오인한다.
            우회책: `sortNm`/`sortDir` 를 뒤집어 반대쪽 100건을 추가로 얻고 합집합을 취한다.
         """
-        params = {"title": title, "displayCount": min(display, 100)}
+        rows = max(1, min(display, 100))   # 하한 1 — displayCount=0 이면 total 까지 0 으로 온다
+        max_records = max(1, max_records)
+        params = {"title": title, "displayCount": rows}
         params.update(filters)  # author/institution/pubiYr/sortNm/sortDir
         try:
             total, refs = parse_rest_references(self._call("referenceSearch", params))
         except ParseError as e:
             raise KciError(str(e)) from e
         out = refs[:max_records]
+        # ⚠️ 부족한 이유가 둘이고 처방이 정반대다 — 반드시 구분해야 한다.
+        #    api_capped : total>100 이라 API 가 더 줄 수 없다 → sort_dir 반전으로 반대쪽을 받는다
+        #    (아니면)   : API 는 다 줬는데 우리가 max_records 로 자른 것 → max_records 를 올리면 된다
         return out, {"total": total, "fetched": len(out),
                      "truncated": bool(total) and len(out) < total,
+                     "api_capped": bool(total) and total > 100,
                      "api_page_limit": 100}
 
     def references(self, title: str, *, max_records: int = 100, display: int = 100,
@@ -288,7 +296,7 @@ class KciClient:
                  display: int = 100, **filters) -> list[dict]:
         years = max(2, min(years, 5))
         rows = min(display, 100)
-        base = {"year": year, "years": years, "displayCount": rows}
+        base = {"year": year, "years": years, "displayCount": max(1, rows)}
         base.update(filters)  # journal/doi/institution/modDate…/sortNm/sortDir
         out: list[dict] = []
         page = 1
