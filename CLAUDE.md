@@ -162,6 +162,16 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   모든 호출이 키 발급자 계정에 귀속되는 문제도 있다. **KCI 측에 키 공개 가능 여부를 확인한 뒤 결정**하기로
   했다(2026-08-11). 그때까지 §4 규칙(키는 코드/커밋 금지) 유지.
 
+- ✅ **전송 선택 추가 — Claude 전용 탈피 (2026-08-11)** — `mcp.run()` 이 인자 없이 호출돼 **stdio 전용**
+  이었다. `main()` 에 `--transport stdio|sse|streamable-http` + `--host`/`--port` 를 붙여 HTTP 로도
+  띄운다(환경변수 `KCI_MCP_TRANSPORT`/`_HOST`/`_PORT` 도 지원). 소스에 Claude 결합 코드는 원래 없었으므로
+  이로써 원격 호스팅·비 stdio 클라이언트까지 열린다.
+  ⚠️ **기본값은 stdio 로 못박아 둘 것** — 기존 등록은 인자 없이 서버를 띄우므로 기본이 바뀌면
+  모든 사용자의 MCP 가 한 번에 죽는다. 회귀 테스트로 고정했다.
+  ⚠️ **HTTP 전송에는 인증이 없다.** 기본 바인드는 루프백. 외부 노출은 인증키를 공개하는 것과 같아
+  기동 시 경고를 찍는다. 미지의 CLI 인자·비숫자 포트 환경변수는 서버를 죽이지 않고 무시한다.
+  검증: stdio 회귀 + `streamable-http` 실기동(HTTP 200, initialize 응답) + 테스트 46종.
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.

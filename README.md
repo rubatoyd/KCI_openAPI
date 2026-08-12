@@ -105,10 +105,23 @@ params = StdioServerParameters(
 )
 ```
 
-**제약 2가지**
-- **전송은 stdio 전용**이다(`mcp.run()` 기본값). 원격 HTTP/SSE 호스팅은 지원하지 않는다 —
-  각 클라이언트가 로컬 서브프로세스로 띄우는 방식만 된다.
-- 도구 설명(description)이 **한국어**다. 한국어를 다루는 모델이어야 도구 선택이 정확하다.
+#### 전송 방식 — stdio(기본) · SSE · Streamable HTTP
+
+로컬 서브프로세스(stdio)뿐 아니라 **HTTP 로도 띄울 수 있다.** 원격 호스팅이나 stdio 를 못 쓰는
+클라이언트를 위한 경로다.
+
+```bash
+kci-mcp                                     # 기본: stdio (기존과 동일)
+kci-mcp --transport streamable-http         # http://127.0.0.1:8000/mcp
+kci-mcp --transport sse --port 9000         # http://127.0.0.1:9000/sse
+```
+환경변수로도 지정 가능: `KCI_MCP_TRANSPORT` · `KCI_MCP_HOST` · `KCI_MCP_PORT`.
+
+> ⚠️ **HTTP 전송에는 인증이 없다.** 기본 바인드는 루프백(`127.0.0.1`)이라 같은 PC 에서만 접근된다.
+> `--host 0.0.0.0` 으로 외부에 열면 **인증키를 품은 서버를 그대로 공개하는 것**과 같다 —
+> 신뢰된 망에서만, 필요하면 앞단에 리버스 프록시·인증을 두고 쓸 것. 서버도 기동 시 경고를 찍는다.
+
+**남은 제약** — 도구 설명(description)이 **한국어**다. 한국어를 다루는 모델이어야 도구 선택이 정확하다.
 
 ### uvx (저장소에서 직접 실행)
 ```bash
