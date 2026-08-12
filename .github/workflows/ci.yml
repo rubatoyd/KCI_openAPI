@@ -1,0 +1,44 @@
+name: CI
+
+# ⚠️ **main 이 곧 프로덕션이다.** MCP 등록이 `uvx --from git+…`(태그 없이 HEAD)를 쓰므로,
+#    main 에 푸시하는 즉시 모든 클라이언트의 다음 기동에 반영된다. 되돌릴 유예가 없다.
+#    따라서 이 워크플로는 "테스트 통과"가 아니라 **"클라이언트가 실제로 띄울 수 있는가"** 를 본다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        # ⚠️ 정확한 버전 고정 — astral-sh/setup-uv 는 v7 이후 **이동 메이저 태그를 내지 않는다**
+        #    (v5·v6·v7 은 있으나 v8·v9 는 없음). `@v9` 로 쓰면 액션 해석 자체가 실패한다.
+        #    actions/* 는 이동 태그를 유지하므로 메이저만 써도 된다.
+        uses: astral-sh/setup-uv@v9.0.0
+
+      - name: Sync (dev)
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      # ── 아래 두 단계가 @HEAD 운영의 실제 안전망이다 ────────────────────────────
+      # uv.lock 은 개발용이고 클라이언트 경로(uvx --from git+…)는 **lock 을 보지 않는다**.
+      # 따라서 lock 이 고정해둔 버전이 아니라 **신규 해석 결과**로 검사해야 의미가 있다.
+      - name: 신규 해석에서 mcp 1.x 확인 (fastmcp 존재)
+        # 실제 사고: 상한 없는 `mcp>=1.2.0` 이 2.0 으로 해석돼 mcp.server.fastmcp 가 사라졌고,
+        # uvx 기동이 ModuleNotFoundError 로 죽었다. lock 에는 1.x 가 박혀 있어 pytest 는 멀쩡했다.
+        run: |
+          uv run --no-project --with . python -c "import mcp.server.fastmcp; print('mcp.server.fastmcp OK')"
+
+      - name: 콜드 스타트 스모크 (클라이언트와 동일 경로)
+        run: |
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
+            | uvx --from . kci-mcp > handshake.jsonl
+          cat handshake.jsonl
+          grep -q '"serverInfo"' handshake.jsonl || { echo "::error::MCP handshake 실패 — 클라이언트가 이 커밋으로 기동할 수 없다"; exit 1; }
+          echo "handshake OK"
