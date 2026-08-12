@@ -30,6 +30,28 @@ class KciClient:
         self.throttle = throttle
         self.timeout = timeout
 
+    def _scrub(self, msg: str) -> str:
+        """메시지에서 인증키 문자열을 지운다 — **누출 2차 방어선**.
+
+        1차는 `parser.check_rest_error` 가 오류 봉투의 `inputData`(요청 에코) 를 빼는 것이다.
+        그것만으로는 오류 문구 **자체**에 키가 박혀 오는 경우(`등록되지 않은 key 'XXX'`)를
+        못 막는다. 응답 본문을 사용자에게 되돌려주는 경로는 전부 여기를 지나게 한다.
+        """
+        return msg.replace(self.api_key, "***") if self.api_key else msg
+
+    def _parse(self, fn, text, *args):
+        """파서 호출 + ParseError → KciError 변환을 **한 곳에서** 한다.
+
+        호출부마다 `except ParseError: raise KciError(str(e))` 를 쓰면 새 호출부에서 또 샌다
+        (`safe_name` 을 `export()` 한 곳에 둔 것과 같은 이유).
+        ⚠️ `from None` 이다 — `from e` 로 체이닝하면 원본 메시지가 트레이스백에 남아
+           지운 의미가 없어진다.
+        """
+        try:
+            return fn(text, *args)
+        except ParseError as e:
+            raise KciError(self._scrub(str(e))) from None
+
     def _call(self, api_code: str, params: dict) -> str:
         base = {"apiCode": api_code, "key": self.api_key}
         base.update({k: v for k, v in params.items() if v not in (None, "")})
@@ -68,10 +90,7 @@ class KciClient:
                     **filters) -> tuple[int, list[Article]]:
         params = {field: value, "page": page, "displayCount": min(display, 100)}
         params.update(filters)  # author/journal/doi/dateFrom… sortNm/sortDir
-        try:
-            return parse_rest_articles(self._call("articleSearch", params))
-        except ParseError as e:
-            raise KciError(str(e)) from e
+        return self._parse(parse_rest_articles, self._call("articleSearch", params))
 
     def search_meta(self, value: str, *, field: str = "title", max_records: int = 1000,
                     display: int = 100, retry_incomplete: int = 1,
@@ -92,6 +111,12 @@ class KciClient:
         #    그러면 결과가 205건 있는데도 "total 0"(= 결과 없음)으로 보고돼 조용한 오보가 된다.
         rows = max(1, min(display, 100))
         max_records = max(1, max_records)
+        # ⚠️ 여러 페이지가 필요하면 **전송 단위를 최대로 올린다** — `display` 는 한 번에 몇 건씩
+        #    받을지일 뿐 결과 집합을 바꾸지 않는다. 올리지 않으면 `display=1`·`max_records=1000`
+        #    이 **1,000회 요청**을 유발한다(2026-08-12 실제 왕복으로 재현. 100회→10회).
+        #    자매 프로젝트 nl(499회)·scienceon(300회) 과 같은 결함 — 세 번째 반복이다.
+        if max_records > rows:
+            rows = 100
         out: list[Article] = []
         seen: set = set()
         page = 1
@@ -260,10 +285,7 @@ class KciClient:
 
     # ── articleDetail ─────────────────────────────────────────────────────────
     def detail(self, arti_id: str) -> Article | None:
-        try:
-            _, arts = parse_rest_articles(self._call("articleDetail", {"id": arti_id}))
-        except ParseError as e:
-            raise KciError(str(e)) from e
+        _, arts = self._parse(parse_rest_articles, self._call("articleDetail", {"id": arti_id}))
         return arts[0] if arts else None
 
     # ── referenceSearch ───────────────────────────────────────────────────────
@@ -280,10 +302,7 @@ class KciClient:
         max_records = max(1, max_records)
         params = {"title": title, "displayCount": rows}
         params.update(filters)  # author/institution/pubiYr/sortNm/sortDir
-        try:
-            total, refs = parse_rest_references(self._call("referenceSearch", params))
-        except ParseError as e:
-            raise KciError(str(e)) from e
+        total, refs = self._parse(parse_rest_references, self._call("referenceSearch", params))
         out = refs[:max_records]
         # ⚠️ 부족한 이유가 둘이고 처방이 정반대다 — 반드시 구분해야 한다.
         #    api_capped : total>100 이라 API 가 더 줄 수 없다 → sort_dir 반전으로 반대쪽을 받는다
@@ -302,16 +321,16 @@ class KciClient:
     def citation(self, year: int, *, years: int = 2, max_records: int = 100,
                  display: int = 100, **filters) -> list[dict]:
         years = max(2, min(years, 5))
-        rows = min(display, 100)
-        base = {"year": year, "years": years, "displayCount": max(1, rows)}
+        rows = max(1, min(display, 100))
+        if max_records > rows:      # search_meta 와 동일 — 작은 display 로 인한 호출 폭주 방지
+            rows = 100
+        base = {"year": year, "years": years, "displayCount": rows}
         base.update(filters)  # journal/doi/institution/modDate…/sortNm/sortDir
         out: list[dict] = []
         page = 1
         while len(out) < max_records and page <= 1000:
-            try:
-                total, recs = parse_rest_citation(self._call("citation", {**base, "page": page}))
-            except ParseError as e:
-                raise KciError(str(e)) from e
+            total, recs = self._parse(parse_rest_citation,
+                                      self._call("citation", {**base, "page": page}))
             if not recs:
                 break
             out.extend(recs)
@@ -322,8 +341,6 @@ class KciClient:
         return out[:max_records]
 
     def citation_detail(self, journal_id: str) -> dict | None:
-        try:
-            _, rows = parse_rest_citation(self._call("citationDetail", {"id": journal_id}))
-        except ParseError as e:
-            raise KciError(str(e)) from e
+        _, rows = self._parse(parse_rest_citation,
+                              self._call("citationDetail", {"id": journal_id}))
         return rows[0] if rows else None

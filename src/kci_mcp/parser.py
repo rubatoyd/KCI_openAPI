@@ -109,10 +109,23 @@ def check_rest_error(root: ET.Element) -> None:
     """성공 응답엔 outputData 가 있다. 없으면 에러 응답으로 보고 본문을 담아 예외.
 
     (화이트리스트 의존 없이 'outputData 부재 = 에러' 로 판정 — 미등록 에러문구·신규 에러도 포착.)
+
+    🔴 **`inputData` 는 반드시 제외한다 — 거기에 인증키가 들어 있다.**
+       KCI 오류 봉투는 요청을 그대로 되돌려주므로(`<inputData><key>…`), 전 요소 텍스트를
+       이어붙이면 **인증키가 예외 메시지에 실려 `_safe` 를 타고 MCP 응답까지 나간다**
+       (2026-08-12 실제 HTTP 왕복으로 재현: `{"error": "<키> articleSearch …"}`).
+       이 저장소는 `raise_for_status()` 가 URL 을 노출한다는 것을 알고 처음부터 피했는데,
+       **누출은 그 문이 아니라 이 문에서 났다.** 전송 계층만 잠그는 것으로는 부족하다.
+       되돌아온 요청 에코는 진단 가치도 없다(우리가 보낸 값이다).
+       ※ 2차 방어로 client 가 인증키 문자열을 한 번 더 지운다(`KciClient._scrub`) —
+         오류 문구 자체에 키가 박혀 오는 경우까지 덮기 위해서다.
     """
     if _desc(root, "outputData") is not None:
         return
-    joined = " ".join((e.text or "").strip() for e in root.iter() if (e.text or "").strip())
+    skip = {id(e) for node in root.iter() if _ln(node.tag) == "inputData"
+            for e in node.iter()}
+    joined = " ".join((e.text or "").strip() for e in root.iter()
+                      if id(e) not in skip and (e.text or "").strip())
     raise ParseError(joined[:300] or "KCI REST 오류 응답(outputData 없음)")
 
 

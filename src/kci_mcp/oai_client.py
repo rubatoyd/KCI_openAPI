@@ -68,17 +68,37 @@ class KciOaiClient:
         return parse_oai_formats(self._call({"verb": "ListMetadataFormats"}))
 
     def list_identifiers(self, *, metadata_prefix: str = "oai_dc", date_from: str | None = None,
-                         date_until: str | None = None, max_records: int = 1000) -> list[dict]:
+                         date_until: str | None = None, max_records: int = 1000,
+                         max_pages: int = 10000) -> list[dict]:
+        """🔴 예전에는 **종료 조건이 `len(out) < max_records` 뿐이라 무한루프가 났다.**
+
+        서버가 토큰은 주면서 header 를 0건 주면 `out` 이 자라지 않아 영영 끝나지 않는다
+        (2026-08-12 로컬 서버로 재현 — 40회 상한에서 끊을 때까지 멈추지 않았다).
+        `list_records` 와 같은 방식으로 막는다: **새 identifier 가 없으면 중단** + 페이지 수 상한.
+        (토큰 문자열 반복으로 순환을 판정하지 않는다 — 서버가 커서를 들고 있어 매번 같은 토큰을
+        주는 구현에서 정상 수확이 조용히 잘린다.)
+        """
         out: list[dict] = []
         params: dict = {"verb": "ListIdentifiers", "metadataPrefix": metadata_prefix}
         if date_from:
             params["from"] = date_from
         if date_until:
             params["until"] = date_until
-        while len(out) < max_records:
+        seen_ids: set[str] = set()
+        pages = 0
+        while len(out) < max_records and pages < max_pages:
             headers, token = parse_oai_identifiers(self._call(params))
-            out.extend(headers)
-            if not token:
+            pages += 1
+            fresh = False
+            for h in headers:
+                ident = h.get("identifier") or ""
+                if ident and ident in seen_ids:
+                    continue
+                if ident:
+                    seen_ids.add(ident)
+                fresh = True
+                out.append(h)
+            if not token or not fresh:
                 break
             params = {"verb": "ListIdentifiers", "resumptionToken": token}
             time.sleep(self.throttle)
@@ -109,17 +129,28 @@ class KciOaiClient:
         while len(out) < max_records and pages < max_pages:
             arts, token = parse_oai_records(self._call(params))
             pages += 1
+            fresh = False
             for a in arts:
-                if contains and not _contains_any(a, contains):
-                    continue
+                # ⚠️ 중복 판정을 `contains` **앞에** 둔다 — 진전 여부는 '새 레코드를 봤는가'이지
+                #    '필터를 통과했는가'가 아니다. 뒤에 두면 필터가 빡빡한 정상 수확에서
+                #    진전 없음으로 오판해 조기 종료한다.
                 key = a.dedup_key()
                 if key in seen:
                     continue
                 seen.add(key)
+                fresh = True
+                if contains and not _contains_any(a, contains):
+                    continue
                 out.append(a)
                 if len(out) >= max_records:
                     break
-            if not token:
+            # 🔴 `not token` 만으로는 부족했다 — 토큰이 계속 오는데 새 레코드가 없으면
+            #    `max_pages`(기본 100,000) 까지 돈다. throttle 0.5s 로 **13시간**이다.
+            #    (2026-08-12 로컬 서버로 재현: 상한에서 끊을 때까지 멈추지 않았다.)
+            #    ⚠️ 순환 판정을 **토큰 문자열 반복**으로 하면 안 된다 — 커서를 서버가 들고 있어
+            #       매 페이지 같은 토큰을 주는 구현에서 정상 수확이 조용히 잘린다
+            #       (실제로 이 하네스에서 300건이 200건으로 잘렸다). 레코드로 판정한다.
+            if not token or not fresh:
                 break
             params = {"verb": "ListRecords", "resumptionToken": token}
             time.sleep(self.throttle)
