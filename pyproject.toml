@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kci-openapi-mcp"
-version = "0.1.4"
+version = "0.2.0"
 description = "MCP server + CLI for KCI (Korea Citation Index) — REST Open API + OAI-PMH hybrid harvester"
 readme = "README.md"
 requires-python = ">=3.10"
