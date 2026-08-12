@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rubatoyd/kci-openapi-mcp",
   "description": "KCI (Korea Citation Index) literature & citation search via REST Open API + OAI-PMH",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "repository": {
     "url": "https://github.com/rubatoyd/KCI_openAPI",
     "source": "github"
@@ -11,8 +11,8 @@
   "packages": [
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/rubatoyd/KCI_openAPI/releases/download/v0.3.0/kci-openapi-mcp.mcpb",
-      "version": "0.3.0",
+      "identifier": "https://github.com/rubatoyd/KCI_openAPI/releases/download/v0.3.1/kci-openapi-mcp.mcpb",
+      "version": "0.3.1",
       "transport": { "type": "stdio" },
       "fileSha256": "__MCPB_SHA256__",
       "environmentVariables": [
