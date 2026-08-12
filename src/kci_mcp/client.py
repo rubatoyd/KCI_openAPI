@@ -205,16 +205,30 @@ class KciClient:
         return arts[0] if arts else None
 
     # ── referenceSearch ───────────────────────────────────────────────────────
-    def references(self, title: str, *, max_records: int = 100, display: int = 100,
-                   **filters) -> list[dict]:
-        # ⚠️ referenceSearch 는 page 파라미터가 없어(가이드 §3) 1회 호출 최대 100건이 API 상한.
+    def references_meta(self, title: str, *, max_records: int = 100, display: int = 100,
+                        **filters) -> tuple[list[dict], dict]:
+        """referenceSearch + 회수 메타 — 조용한 절단 방지.
+
+        ⚠️ referenceSearch 는 **page 파라미터가 없어**(가이드 §3) 1회 호출 100건이 API 상한이다.
+           즉 total 이 100 을 넘으면 나머지는 **어떤 방법으로도 이어 받을 수 없다**. 그래서 total 을
+           노출하는 것이 특히 중요하다 — 절단을 모르면 부분 집합을 전수로 오인한다.
+           우회책: `sortNm`/`sortDir` 를 뒤집어 반대쪽 100건을 추가로 얻고 합집합을 취한다.
+        """
         params = {"title": title, "displayCount": min(display, 100)}
         params.update(filters)  # author/institution/pubiYr/sortNm/sortDir
         try:
-            _, refs = parse_rest_references(self._call("referenceSearch", params))
+            total, refs = parse_rest_references(self._call("referenceSearch", params))
         except ParseError as e:
             raise KciError(str(e)) from e
-        return refs[:max_records]
+        out = refs[:max_records]
+        return out, {"total": total, "fetched": len(out),
+                     "truncated": bool(total) and len(out) < total,
+                     "api_page_limit": 100}
+
+    def references(self, title: str, *, max_records: int = 100, display: int = 100,
+                   **filters) -> list[dict]:
+        """레코드만 반환하는 얇은 래퍼. 절단 여부까지 필요하면 references_meta() 를 쓴다."""
+        return self.references_meta(title, max_records=max_records, display=display, **filters)[0]
 
     # ── citation / citationDetail ─────────────────────────────────────────────
     def citation(self, year: int, *, years: int = 2, max_records: int = 100,

@@ -91,6 +91,27 @@ REST_ARTICLE_DETAIL = """<?xml version="1.0" encoding="UTF-8"?>
         <url><![CDATA[https://www.kci.go.kr/kciportal/ci/sereArticleSearch/ciSereArtiView.kci?sereArticleSearchBean.artiId=ART002358582]]></url>
         <verified>Y</verified>
       </articleInfo>
+      <!-- ⚠️ 실제 응답 구조(2026-08-11 라이브 확인). 공식 가이드 복구본 §2-2 에는 누락돼 있었다.
+           원소명 오타(isseue / pubilisher / pubi-year)는 **API 원본 그대로**다 — 고쳐 쓰면 값이 빈다.
+           arti-id 는 KCI 등재 참고문헌에만 붙는다(단행본·보고서 등에는 없음). -->
+      <referenceInfo>
+        <reference refebibl-id="REF077422048" arti-id="ART002687726" type-code="01" type-name="학술지(정기간행물)">
+          <title><![CDATA[호네트의 인정이론적 정의관과 도덕교육]]></title>
+          <author><![CDATA[고미숙]]></author>
+          <journal-name><![CDATA[도덕윤리과교육]]></journal-name>
+          <pubi-year>2021</pubi-year>
+          <volume>70</volume>
+          <isseue></isseue>
+          <page>291-322</page>
+        </reference>
+        <reference refebibl-id="REF077422050" type-code="04" type-name="보고서">
+          <title><![CDATA[대입제도 공정성 강화 방안]]></title>
+          <author><![CDATA[교육부]]></author>
+          <pubilisher><![CDATA[교육부]]></pubilisher>
+          <pubi-year>2019</pubi-year>
+          <page>-</page>
+        </reference>
+      </referenceInfo>
     </record>
   </outputData>
 </MetaData>

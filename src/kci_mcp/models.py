@@ -41,6 +41,9 @@ class Article:
     doi: str = ""
     uci: str = ""
     url: str = ""
+    # articleDetail 의 <referenceInfo> — 이 논문이 **인용한** 참고문헌 목록.
+    # arti_id 가 있는 항목만 KCI 논문으로 연결된다(비KCI 서지는 빈 문자열). articleSearch 에는 없다.
+    references: list[dict[str, str]] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)   # 원본 필드 보존
 
     def to_row(self, *, list_sep: str = "; ") -> dict[str, Any]:

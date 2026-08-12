@@ -211,6 +211,30 @@ record
    └─ verified (Y/N)
 ```
 
+**★ 추가 — `referenceInfo` (2026-08-11 라이브 확인, 복구본에 누락돼 있던 부분)**
+
+`record` 아래에 `journalInfo`·`articleInfo` 와 **형제**로 `referenceInfo` 가 온다. 이 논문이 **인용한**
+참고문헌 목록이며, `articleSearch` 응답에는 없다.
+
+```
+record
+└─ referenceInfo
+   └─ reference [refebibl-id="REF…"] [arti-id="ART…"] [type-code] [type-name]
+      ├─ title / author
+      ├─ journal-name          (학술지인 경우)
+      ├─ pubilisher            ← ⚠️ API 오타. publisher 아님
+      ├─ pubi-year             ← ⚠️ API 오타. pub-year 아님
+      ├─ volume / isseue       ← ⚠️ API 오타. issue 아님
+      └─ page
+```
+
+- **`arti-id` 는 KCI 등재 참고문헌에만 붙는다.** 단행본·보고서·해외문헌 등에는 없다.
+  이 속성이 **인용 네트워크를 구성할 수 있는 유일한 연결고리**다(없으면 텍스트 대조뿐).
+  실측: ART003175974 의 참고문헌 55건 중 KCI 연결 19건.
+- `type-code`/`type-name` 예: `01` 학술지(정기간행물), `04` 보고서.
+- ⚠️ **원소명 오타를 그대로 써야 한다.** 정상 철자로 추정해 매핑하면 값이 통째로 빈다.
+- 구현: `parser._references_from_rest_record`, 노출: `kci_detail` 의 `references` 필드.
+
 ### 2-3. 예제
 ```
 https://open.kci.go.kr/po/openapi/openApiSearch.kci?apiCode=articleDetail&key=00000001&id=ART002358582

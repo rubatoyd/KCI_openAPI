@@ -143,6 +143,25 @@ config/         # 검색 설정 템플릿 (search.example.yaml)
   `has_api_key:False`(= `.env` 미로딩으로 위 가설 실증) + **OAI Identify 네트워크 왕복 성공**.
   ※ `upload/download-artifact`·`setup-node` 는 이 워크플로가 쓰지 않아 미검증 — 다음 릴리스에서 확인된다.
 
+- ✅ **명세에 있으나 흘려버리던 정보 4종 구현 (2026-08-11)** — 연구 쪽(`투고논문/교육불평등 지도`)에서
+  MCP 로는 안 돼 외부 스크립트로 우회하던 것들이다.
+  ① **`articleDetail` 의 `<referenceInfo>`** — 논문별 참고문헌을 `arti-id`(KCI 논문 ID)와 함께 준다.
+     **인용 네트워크를 구성할 수 있는 유일한 연결고리**인데 파서가 통째로 버리고 있었다.
+     `kci_detail` 이 `references`·`references_count`·`references_linked_count` 를 반환한다.
+     ⚠️ **원소명이 API 오타다** — `pubi-year`·`isseue`·`pubilisher`. 정상 철자로 추정하면 값이 빈다.
+     ⚠️ `arti-id` 는 KCI 등재분에만 붙는다(실측: 55건 중 19건). 나머지는 텍스트뿐.
+  ② **`referenceSearch` 의 `total`** — 세 번째 '조용한 절단'이었다. 실측 total 191건인데 50건만
+     회수돼도 표시가 없었다. `total`·`truncated`·경고 반환. ⚠️ 이 API 는 **page 파라미터가 없어
+     1회 100건이 상한**이라 절단분을 이어 받을 수 없다 — `sort_dir` 를 뒤집어 반대쪽을 받는 게 유일한 우회책.
+  ③④ **`institution`·`sortNm`·`sortDir`** — 클라이언트는 `**filters` 로 이미 통과시켰으나 MCP 도구가
+     노출하지 않았다. `kci_search`·`kci_references` 에 `institution`·`sort_by`·`sort_dir` 추가.
+  검증: 라이브 4종 전수 + 오프라인 회귀 7건(총 38 통과). 명세 복구본 §2-2 도 보완.
+- ⏳ **인증키 내장은 보류** — "이용제한 없는 키이니 MCP 에 내장" 요청이 있었으나, 주 배포 경로가
+  `uvx --from git+<공개 저장소>` 라 내장 = **공개 저장소 커밋**이고 git 이력에 영구히 남는다.
+  클라이언트 측 암호화는 복호화 코드가 같이 배포되므로 보호가 되지 않는다(난독화일 뿐).
+  모든 호출이 키 발급자 계정에 귀속되는 문제도 있다. **KCI 측에 키 공개 가능 여부를 확인한 뒤 결정**하기로
+  했다(2026-08-11). 그때까지 §4 규칙(키는 코드/커밋 금지) 유지.
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.

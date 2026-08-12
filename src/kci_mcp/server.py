@@ -63,10 +63,13 @@ def kci_status() -> dict:
 def kci_search(title: str, author: str | None = None, journal: str | None = None,
                keyword: str | None = None, abstract: str | None = None, doi: str | None = None,
                date_from: str | None = None, date_to: str | None = None,
-               rows: int = 20) -> dict:
+               institution: str | None = None, sort_by: str | None = None,
+               sort_dir: str | None = None, rows: int = 20) -> dict:
     """[REST] 논문 검색 — title 필수 + 선택 필터. 인증키 필요.
 
     date_from/date_to: 발행연월 YYYYMM. rows: 반환 건수(최대 100).
+    institution: 발행기관명 필터. sort_by: title|author|pubiYr, sort_dir: asc|desc.
+    (정렬은 페이징 상한에 걸렸을 때 sort_dir 를 뒤집어 반대쪽을 추가 수집하는 데도 쓴다.)
     반환값의 total 은 KCI 가 보고한 전체 건수이고, truncated=true 면 rows 상한에 잘린 것이다.
 
     ⚠️ articleSearch 응답에는 **저자 키워드·ISSN·UCI 가 아예 없다**(원본 XML 에 필드 부재).
@@ -82,6 +85,7 @@ def kci_search(title: str, author: str | None = None, journal: str | None = None
     filters = {k: v for k, v in {
         "author": author, "journal": journal, "keyword": keyword,
         "abstract": abstract, "doi": doi, "dateFrom": date_from, "dateTo": date_to,
+        "institution": institution, "sortNm": sort_by, "sortDir": sort_dir,
     }.items() if v}
     try:
         recs, meta = KciClient().search_meta(title, max_records=min(rows, 100),
@@ -114,23 +118,51 @@ def kci_detail(arti_id: str) -> dict:
         r = KciClient().detail(arti_id)
     except KciError as e:
         return {"error": str(e)}
-    return r.to_row() if r else {"error": "결과 없음"}
+    if not r:
+        return {"error": "결과 없음"}
+    out = r.to_row()
+    # <referenceInfo> — 이 논문이 **인용한** 참고문헌. arti_id 가 있는 항목만 KCI 논문으로 연결된다.
+    # 인용 네트워크를 구성하려면 이 연결분만 쓸 수 있다(비KCI 서지는 텍스트뿐).
+    linked = [x for x in r.references if x.get("arti_id")]
+    out["references"] = r.references
+    out["references_count"] = len(r.references)
+    out["references_linked_count"] = len(linked)
+    return out
 
 
 @mcp.tool(annotations=_READ)
 @_safe
 def kci_references(title: str, author: str | None = None, pub_year: str | None = None,
-                  rows: int = 50) -> dict:
-    """[REST] 제목 검색어에 매칭된 논문들의 참고문헌 원형 수집. 인증키 필요."""
+                  institution: str | None = None, sort_by: str | None = None,
+                  sort_dir: str | None = None, rows: int = 50) -> dict:
+    """[REST] 제목 검색어에 매칭된 논문들의 참고문헌 원형 수집. 인증키 필요.
+
+    반환 레코드의 `article_id` 는 **인용하는 쪽**(참고문헌을 단 논문)이다.
+    institution: 발행기관명 필터. sort_by: title|author|pubiYr, sort_dir: asc|desc.
+
+    ⚠️ referenceSearch 에는 **page 파라미터가 없어 1회 100건이 API 상한**이다. total>100 이면
+    나머지는 이어 받을 수 없으므로 `truncated` 를 반드시 확인할 것. 상한을 넘겼다면
+    sort_dir 를 뒤집어 반대쪽 100건을 추가로 받아 합집합을 취하는 것이 유일한 우회책이다.
+    """
     if get_api_key() is None:
         return {"error": "KCI_API_KEY 미설정 — referenceSearch 는 REST 전용(OAI 미제공)."}
     from .client import KciClient, KciError
-    filters = {k: v for k, v in {"author": author, "pubiYr": pub_year}.items() if v}
+    filters = {k: v for k, v in {"author": author, "pubiYr": pub_year,
+                                 "institution": institution,
+                                 "sortNm": sort_by, "sortDir": sort_dir}.items() if v}
     try:
-        refs = KciClient().references(title, max_records=rows, **filters)
+        refs, meta = KciClient().references_meta(title, max_records=rows, **filters)
     except KciError as e:
         return {"error": str(e)}
-    return {"count": len(refs), "references": refs}
+    out = {"count": len(refs), "total": meta["total"], "truncated": meta["truncated"],
+           "references": refs}
+    if meta["truncated"]:
+        out["warning"] = (
+            f"⚠️ 절단됨 — KCI 가 보고한 total 은 {meta['total']}건인데 {len(refs)}건만 회수했습니다. "
+            f"referenceSearch 는 page 파라미터가 없어 1회 {meta['api_page_limit']}건이 API 상한입니다. "
+            f"sort_dir 를 뒤집어(asc↔desc) 반대쪽을 추가 수집한 뒤 합집합을 취하세요."
+        )
+    return out
 
 
 @mcp.tool(annotations=_READ)

@@ -116,6 +116,41 @@ def check_rest_error(root: ET.Element) -> None:
     raise ParseError(joined[:300] or "KCI REST 오류 응답(outputData 없음)")
 
 
+# articleDetail <referenceInfo><reference> 의 하위 요소명 → 정규화 키.
+# ⚠️ **API 원본 철자를 그대로 쓴다** — `isseue`·`pubilisher`·`pubi-year` 는 KCI 쪽 오타이며
+#    추정으로 `issue`·`publisher`·`pub-year` 를 쓰면 값이 통째로 비어버린다(2026-08-11 라이브 확인).
+_REF_FIELD_MAP = {
+    "title": "title", "author": "author", "journal-name": "journal",
+    "pubilisher": "publisher", "pubi-year": "pub_year",
+    "volume": "volume", "isseue": "issue", "page": "page",
+}
+
+
+def _references_from_rest_record(rec: ET.Element) -> list[dict[str, str]]:
+    """<referenceInfo> → 참고문헌 목록. 이 논문이 **인용한** 쪽이다.
+
+    `arti-id` 는 KCI 에 등재된 참고문헌에만 붙는다(단행본·보고서·해외문헌 등은 없음).
+    이 값이 인용 네트워크 구성의 유일한 연결고리다 — 없으면 텍스트 대조밖에 못 한다.
+    """
+    ri = _child(rec, "referenceInfo")
+    if ri is None:
+        return []
+    out: list[dict[str, str]] = []
+    for r in _children(ri, "reference"):
+        d: dict[str, str] = {
+            "arti_id": r.attrib.get("arti-id", ""),      # 빈 문자열 = KCI 미연결
+            "refebibl_id": r.attrib.get("refebibl-id", ""),
+            "type_code": r.attrib.get("type-code", ""),
+            "type_name": r.attrib.get("type-name", ""),
+        }
+        for ch in r:
+            key = _REF_FIELD_MAP.get(_ln(ch.tag))
+            if key:
+                d[key] = _text(ch)
+        out.append(d)
+    return out
+
+
 def _article_from_rest_record(rec: ET.Element) -> Article:
     a = Article(source="rest")
     ji = _child(rec, "journalInfo")
@@ -161,6 +196,7 @@ def _article_from_rest_record(rec: ET.Element) -> Article:
         if cc is not None:
             a.citation_count = _text(cc) or cc.attrib.get("kci", "")
         a.url = _text(_child(ai, "url"))
+    a.references = _references_from_rest_record(rec)  # articleDetail 에만 존재
     a.raw = _elem_to_dict(rec)
     return a
 
