@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "kci-openapi-mcp",
   "display_name": "KCI 수집기 (kci-openapi-mcp)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "한국연구재단 KCI(Korea Citation Index) 문헌·인용지수 검색·수집기 — REST Open API(인증키) + OAI-PMH(무인증) 혼용. xlsx/csv/json/sqlite 내보내기",
   "author": { "name": "Yeondong Yang", "url": "https://github.com/rubatoyd/KCI_openAPI" },
   "homepage": "https://github.com/rubatoyd/KCI_openAPI",
