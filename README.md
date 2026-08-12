@@ -3,72 +3,71 @@
 <!-- mcp-name: io.github.rubatoyd/kci-openapi-mcp -->
 
 한국연구재단(NRF) **KCI(Korea Citation Index)** 문헌·인용지수 검색·수집 **MCP 서버 + CLI**.
-**REST Open API**(키워드 검색)와 **OAI-PMH**(무인증 대량 수확)를 **혼용**한다.
-자매 프로젝트 scienceON-mcp(KISTI ScienceON)와 동일 아키텍처.
+**REST Open API**(키워드 검색)와 **OAI-PMH**(무인증 대량 수확)를 함께 다룬다.
 
-## 무엇을 하나
-- 논문 검색·상세 (서지 · **국문/영문 초록** · 키워드 · 저자/소속)
-- **OAI-PMH 대량 수확** (인증키 불필요 — 세트+날짜범위)
-- 참고문헌 수집 — 원형 텍스트 + **피인용 논문의 KCI ID**(`arti-id`) → 인용 네트워크 구성 가능
-- 저널 인용지수/등재이력 (REST 전용)
-- 대량 수집 → xlsx / csv / json / sqlite
+## 기능
 
-## 인증키 없이 30초 만에 써보기
-
-**REST 검색만 인증키가 필요하고, OAI-PMH 대량 수확은 키가 없어도 됩니다.** 발급을 기다리는 동안에도
-수집을 시작할 수 있습니다.
-
-```bash
-uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci identify
-# → KCI OAI 저장소 정보가 나오면 연결 정상 (키 불필요)
-
-uvx --from git+https://github.com/rubatoyd/KCI_openAPI \
-  kci harvest --set ARTI --from 2024-01-01 --until 2024-03-31 --contains 학부모 --max 200
-```
-
-MCP 로 붙였다면 `kci_status`(연결 점검) → `kci_harvest`(무인증 수확) 순서로 바로 쓸 수 있습니다.
-키가 없으면 REST 도구들은 오류 대신 **OAI 대안을 안내**합니다.
+- **논문 검색·상세** — 서지 · 국문/영문 초록 · 키워드 · 저자/소속
+- **참고문헌 수집** — 원형 텍스트 + 피인용 논문의 KCI ID(`arti_id`) → 인용 네트워크 구성
+- **저널 인용지수** — 연도별 IF · 등재이력
+- **OAI-PMH 대량 수확** — 인증키 없이 세트 + 날짜범위 전수 수집
+- **내보내기** — xlsx · csv · json · sqlite
 
 ## 두 인터페이스
+
 | | REST Open API | OAI-PMH |
 |---|---|---|
 | 엔드포인트 | `…/po/openapi/openApiSearch.kci` | `…/oai/request` |
 | 인증 | `KCI_API_KEY` 필요 | **불필요** |
-| 질의 | 키워드 검색(title 필수) | 세트+날짜 대량 수확 |
+| 질의 | 키워드 검색(`title` 필수) | 세트 + 날짜범위 수확 |
 | 인용지수·참고문헌 | ✅ | ❌ |
+
 규격: [docs/KCI_API_GUIDE.md](docs/KCI_API_GUIDE.md) · [docs/KCI_OAI_PMH_GUIDE.md](docs/KCI_OAI_PMH_GUIDE.md) · 설계: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-## 현재 상태
-- ✅ 구현·**REST/OAI 라이브 검증** 완료 · pytest 51 + MCP 프로토콜 스모크 · 도구 annotations
-- ✅ **공식 MCP 레지스트리 발행됨**: `io.github.rubatoyd/kci-openapi-mcp`
-- ✅ Claude Desktop **자체완결 `.mcpb`**(win/mac/linux, Python·uv 불필요) + Claude Code `.mcp.json`
-- ⚠️ `mcp` SDK는 **1.x 고정**(`mcp>=1.2.0,<2`) — 2.0 에서 `mcp.server.fastmcp` 가 제거되어 상한 없이는 기동 실패
+## 인증키 없이 바로 써보기
 
-> **Claude 앱 안에서 검색해 설치할 수는 없습니다.** 공식 MCP 레지스트리 등재
-> (`registry.modelcontextprotocol.io`)와 Claude Desktop **인앱 커넥터 디렉터리**는 별개이고
-> 자동 동기화되지 않습니다. 인앱 노출은 Anthropic 디렉터리 심사를 별도로 통과해야 합니다
-> (준비 현황 → [docs/DIRECTORY_SUBMISSION.md](docs/DIRECTORY_SUBMISSION.md)).
-> 그때까지는 아래 **파일(.mcpb) 설치 · CLI 등록 · 수동 config** 중 하나를 쓰세요.
+REST 검색만 인증키가 필요하고, OAI-PMH 수확은 키 없이 동작한다.
 
-## MCP 클라이언트에 등록
-
-### Claude Code
-프로젝트 루트의 `.mcp.json` 이 자동 인식된다(키는 환경변수로 주입):
 ```bash
-export KCI_API_KEY=<발급키>   # 선택 — 없으면 OAI 무인증 도구만 동작
-# 또는 어디서나:
-claude mcp add kci --env KCI_API_KEY=$KCI_API_KEY -- uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci-mcp
+uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci identify
+```
+```bash
+uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci harvest --set ARTI --from 2024-01-01 --until 2024-03-31 --contains 학부모 --max 200
 ```
 
+MCP 로 붙였다면 `kci_status` → `kci_harvest` 순으로 바로 쓸 수 있다. 키가 없으면 REST 도구는
+오류 대신 OAI 대안을 안내한다.
+
+## 인증키 발급
+
+REST 도구(`kci_search` · `kci_detail` · `kci_references` · `kci_journal_citation`)에만 필요하다.
+
+1. [open.kci.go.kr](https://open.kci.go.kr) 에서 **Open API 이용 신청**
+2. 발급된 인증키 문자열 1개를 받는다
+3. 아래 중 한 곳에 넣는다 — 코드나 커밋에는 넣지 않는다
+
+| 사용 환경 | 넣는 곳 |
+|---|---|
+| Claude Code | `.claude/settings.local.json` 의 `env` (gitignore 대상) |
+| Claude Desktop | `claude_desktop_config.json` 의 `env` — 평문 인라인(`${VAR}` 확장 안 됨) |
+| `.mcpb` 설치 | 설치 창의 입력란 |
+| CLI / 로컬 개발 | `.env`(gitignore) 또는 OS 사용자 환경변수 |
+
+AES 암호화·토큰 발급·공인 IP 등록은 불필요하다. 평문 `key` 쿼리 파라미터 하나로 호출한다.
+
+## 설치
+
 ### Claude Desktop
-**(권장) 자체완결 `.mcpb` — Python·uv 불필요**, 더블클릭 설치:
-[릴리스](https://github.com/rubatoyd/KCI_openAPI/releases/latest)에서 OS에 맞는 파일 다운로드 →
-더블클릭(또는 Settings → Extensions → Install) → `KCI_API_KEY` 입력(선택).
-- Windows: `kci-openapi-mcp-win-x64.mcpb` / macOS: `…-macos-arm64.mcpb` / Linux: `…-linux-x64.mcpb`
 
-**(경량) `kci-openapi-mcp.mcpb`** — 크기 작지만 실행에 `uv` 필요(`uvx --from git+…`).
+**자체완결 `.mcpb`(권장)** — Python·uv 불필요. [릴리스](https://github.com/rubatoyd/KCI_openAPI/releases/latest)에서
+OS에 맞는 파일을 받아 더블클릭(또는 Settings → Extensions → Install) → `KCI_API_KEY` 입력(선택).
 
-**(수동 config)** `%APPDATA%/Claude/claude_desktop_config.json`:
+| 자산 | 특징 |
+|---|---|
+| `kci-openapi-mcp-win-x64.mcpb` / `…-macos-arm64.mcpb` / `…-linux-x64.mcpb` | 자체완결 — 사전 설치물 없음 |
+| `kci-openapi-mcp.mcpb` | 경량. 실행에 `uv` 필요 |
+
+**수동 config** — `%APPDATA%/Claude/claude_desktop_config.json`:
 ```json
 { "mcpServers": { "kci": {
   "command": "uvx",
@@ -77,131 +76,111 @@ claude mcp add kci --env KCI_API_KEY=$KCI_API_KEY -- uvx --from git+https://gith
 } } }
 ```
 
-### 다른 MCP 클라이언트 (Claude 전용 아님)
+### Claude Code
 
-**소스에 Claude 결합 코드가 없다.** 공식 MCP SDK 의 표준 **stdio** 서버이므로 MCP 를 지원하는
-에이전트면 그대로 붙는다 — Cursor · Windsurf · Cline · Zed · VS Code Copilot(agent mode) ·
-OpenAI Agents SDK · MCP Python/TS SDK 로 만든 자체 클라이언트 등.
-
-등록 형태는 어디서나 같다. 클라이언트의 MCP 설정에 아래 3요소만 넣으면 된다.
-
-```json
-{
-  "command": "uvx",
-  "args": ["--from", "git+https://github.com/rubatoyd/KCI_openAPI", "kci-mcp"],
-  "env": { "KCI_API_KEY": "<발급키 또는 비움>", "KCI_OS_TRUST": "1" }
-}
+```bash
+claude mcp add kci --env KCI_API_KEY=$KCI_API_KEY -- uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci-mcp
 ```
 
-Python 으로 직접 붙일 때(예: 자체 에이전트):
+프로젝트 루트의 `.mcp.json` 도 자동 인식된다.
+
+### 다른 MCP 클라이언트
+
+표준 stdio MCP 서버이므로 MCP 를 지원하는 에이전트면 그대로 붙는다 — Cursor · Windsurf · Cline ·
+Zed · VS Code Copilot(agent mode) · OpenAI Agents SDK · 자체 클라이언트 등. 위 `command`/`args`/`env`
+3요소를 각 클라이언트 설정에 옮기면 된다.
+
 ```python
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import StdioServerParameters
 
 params = StdioServerParameters(
     command="uvx",
     args=["--from", "git+https://github.com/rubatoyd/KCI_openAPI", "kci-mcp"],
-    env={"KCI_API_KEY": "..."},   # 비워두면 OAI 무인증 도구만
+    env={"KCI_API_KEY": "..."},   # 비우면 OAI 무인증 도구만
 )
 ```
 
-#### 전송 방식 — stdio(기본) · SSE · Streamable HTTP
-
-로컬 서브프로세스(stdio)뿐 아니라 **HTTP 로도 띄울 수 있다.** 원격 호스팅이나 stdio 를 못 쓰는
-클라이언트를 위한 경로다.
+### 전송 방식
 
 ```bash
-kci-mcp                                     # 기본: stdio (기존과 동일)
-kci-mcp --transport streamable-http         # http://127.0.0.1:8000/mcp
-kci-mcp --transport sse --port 9000         # http://127.0.0.1:9000/sse
-```
-환경변수로도 지정 가능: `KCI_MCP_TRANSPORT` · `KCI_MCP_HOST` · `KCI_MCP_PORT`.
-
-> ⚠️ **HTTP 전송에는 인증이 없다.** 기본 바인드는 루프백(`127.0.0.1`)이라 같은 PC 에서만 접근된다.
-> `--host 0.0.0.0` 으로 외부에 열면 **인증키를 품은 서버를 그대로 공개하는 것**과 같다 —
-> 신뢰된 망에서만, 필요하면 앞단에 리버스 프록시·인증을 두고 쓸 것. 서버도 기동 시 경고를 찍는다.
-
-**남은 제약** — 도구 설명(description)이 **한국어**다. 한국어를 다루는 모델이어야 도구 선택이 정확하다.
-
-### uvx (저장소에서 직접 실행)
-```bash
-uvx --from git+https://github.com/rubatoyd/KCI_openAPI kci-mcp   # MCP 서버(stdio)
-```
-> PyPI에는 게시하지 않음 — 레지스트리 배포는 `.mcpb`(GitHub Release) 방식.
-
-## CLI (로컬 개발)
-```bash
-uv sync                    # venv는 UV_PROJECT_ENVIRONMENT 로 클라우드 폴더 밖 권장
-kci identify               # OAI 무인증 — 키 없이 즉시
-kci harvest --set ARTI --from 2024-01-01 --until 2024-12-31 --contains 학부모 --max 500
-kci search --title 경계선지능 --rows 20   # REST(인증키 필요)
-kci collect --config config/borderline_slow.yaml
+kci-mcp                                # stdio (기본)
+kci-mcp --transport streamable-http    # http://127.0.0.1:8000/mcp
+kci-mcp --transport sse --port 9000    # http://127.0.0.1:9000/sse
 ```
 
-### MCP 도구 (7종)
-`kci_status` · `kci_search` · `kci_detail` · `kci_references` · `kci_journal_citation` · `kci_harvest` · `kci_collect`
-`kci_collect` 은 요청 성격·키 유무로 REST↔OAI 자동 선택.
-> 상세 조회 인자는 `arti_id`(KCI Control Number, 예: `ART003047608`).
->
-> **알아둘 것 (전부 실측 확인)**
-> - `articleSearch` 는 `keyword=` 로 **검색은 되지만 응답에 키워드·ISSN·UCI 를 싣지 않는다**.
->   검색 결과의 빈 `keywords` 는 '키워드 없는 논문'이 아니다 — 필요하면 `kci_detail` 로 건별 보강.
-> - `kci_collect` 의 REST 경로는 각 검색어를 **제목축·키워드축 두 번** 조회해 합집합한다.
->   결과는 '제목검색 결과'가 아니라 제목∪키워드다. `meta.axes` 에 축별 `total` 이 담기고,
->   `max_records` 상한에 걸리면 `truncated: true` 와 경고 문구가 함께 온다.
-> - `kci_detail` 은 **참고문헌을 `arti_id`(피인용 논문의 KCI ID)와 함께** 반환한다
->   (`references`·`references_count`·`references_linked_count`). 이 ID 가 인용 네트워크를
->   구성할 수 있는 유일한 연결고리다. 단 **KCI 등재 참고문헌에만 붙는다** — 단행본·보고서·해외문헌은
->   빈 문자열이다(실측: 55건 중 19건 연결).
-> - `kci_references` 는 `total`·`truncated` 를 함께 준다. ⚠️ 이 API 는 **page 파라미터가 없어
->   1회 100건이 상한**이라 절단분을 이어 받을 수 없다. 넘쳤다면 `sort_dir` 를 뒤집어(asc↔desc)
->   반대쪽 100건을 받아 합집합을 취하는 것이 유일한 우회책이며, 경고 문구가 그렇게 안내한다.
-> - `kci_search`·`kci_references` 는 `institution`(발행기관) · `sort_by`(title/author/pubiYr) ·
->   `sort_dir`(asc/desc) 필터를 지원한다. 잘못된 값은 **보내기 전에 막는다** — `sort_dir` 오타는
->   KCI 가 HTTP 500 을 내고 `sort_by` 오타는 **조용히 무시**되어 정렬한 줄 알고 넘어가기 때문이다.
+환경변수: `KCI_MCP_TRANSPORT` · `KCI_MCP_HOST` · `KCI_MCP_PORT`.
 
-#### ⚠️ 회수량과 `total` 이 다를 때 — 절단인가 아닌가 (v0.3.0)
+## MCP 도구
 
-적대적 검증에서 **KCI 가 보고한 `total` 이 실제 서빙량보다 클 수 있다**는 것이 확인됐다
-(실측: '교육격차' total 205 / 실회수 204, '학부모' 4766 / 4645, 중복제거 0건).
-그래서 두 사건을 **서로 다른 플래그**로 구분한다.
+| 도구 | 하는 일 |
+|---|---|
+| `kci_status` | 연결 점검 — OAI Identify + 인증키 보유 여부 |
+| `kci_search` | 논문 검색 — `title` 필수 + author/journal/keyword/abstract/doi/발행연월/institution 필터, 정렬 |
+| `kci_detail` | Control Number(`ART…`)로 상세 — 키워드·ISSN·저자소속·**참고문헌**의 유일한 출처 |
+| `kci_references` | 제목 검색어에 매칭된 논문들의 참고문헌 원형 |
+| `kci_journal_citation` | 저널 인용지수 — 연도 목록 / `journal_id` 상세(등재이력·연도별 IF) |
+| `kci_harvest` | OAI-PMH 무인증 대량 수확 — 세트 + 날짜범위, `contains` 로컬 필터 |
+| `kci_collect` | 라우터 — 키 유무·요청 성격으로 REST↔OAI 자동 선택 후 파일 저장 |
+
+## 알아둘 제한
+
+**`articleSearch` 는 키워드·ISSN·UCI 를 응답에 싣지 않는다.** `keyword=` 로 검색은 되지만 결과에는
+없다. 검색 결과의 빈 `keywords` 는 '키워드 없는 논문'이 아니다 — 필요하면 `kci_detail` 로 건별 보강한다.
+
+**`kci_collect` 의 REST 경로는 제목축 ∪ 키워드축이다.** 각 검색어를 두 축으로 조회해 합집합을 만든다.
+결과는 '제목검색 결과'가 아니므로 코퍼스 경계를 기술할 때 명시해야 한다. `meta.axes` 에 축별 `total` 이 담긴다.
+
+**참고문헌의 `arti_id` 는 KCI 등재분에만 붙는다.** 단행본·보고서·해외문헌은 빈 문자열이다.
+인용 네트워크는 이 ID 가 있는 항목으로만 구성할 수 있다(`references_linked_count` 로 확인).
+
+**`referenceSearch` 는 페이지 파라미터가 없어 1회 100건이 상한이다.** 상한을 넘긴 분량은 이어 받을 수
+없다. `sort_dir` 를 뒤집어(asc↔desc) 반대쪽 100건을 받아 합집합을 취하는 것이 유일한 우회책이다.
+
+**KCI 가 보고하는 `total` 은 실제로 받을 수 있는 건수보다 클 수 있다.** 그래서 두 상황을 다른
+플래그로 구분한다.
 
 | 플래그 | 뜻 | 대처 |
 |---|---|---|
-| `truncated: true` | **우리 상한(`max_records`)에 걸렸다** | 상한을 올려 재수집하면 해결된다 |
-| `total_mismatch: true` | 페이징을 끝까지 돌았는데 `total` 에 못 미쳤다 | **올려도 늘지 않는다.** 회수량을 확정 수치로 쓸 것 |
+| `truncated` | `max_records` 상한에 걸렸다 | 상한을 올려 재수집하면 늘어난다 |
+| `total_mismatch` | 끝까지 페이징했는데 `total` 에 못 미쳤다 | 상한을 올려도 늘지 않는다. 회수량을 확정 수치로 쓴다 |
 
-> v0.3.0 이전에는 이 둘을 `truncated` 하나로 뭉쳐, 전수 수집을 마친 뒤에도 "상한을 올리라"는
-> **틀린 조언**이 붙었다. 그 값을 읽던 코드가 있다면 의미가 달라졌으니 확인할 것.
+**다중 페이지 질의는 호출마다 결과가 미세하게 달라진다.** 단일 페이지 질의는 안정적이다.
+`total` 에 못 미치고 상한도 아니면 한 번 더 훑어 합집합을 취한다(`meta.sweeps` 가 1보다 크면 보정된 것).
+비용이 부담되면 `retry_incomplete=0` 으로 끈다.
 
-**불완전 회수 자동 보정** — 다중 페이지 질의는 호출마다 결과가 흔들린다(동일 조건 3회에
-204/204/205, 레코드 합집합 205·교집합 203). 단일 페이지 질의는 안정적이다. 그래서 `total` 에
-못 미치고 상한도 아니면 **한 번 더 훑어 합집합**을 취한다(실측: 보정 off 204 고정 → on 205 완전 회수).
-`meta.sweeps` 가 1보다 크면 보정이 돌았다는 뜻이다. 비용이 부담되면 `retry_incomplete=0` 으로 끈다.
+**정렬 인자는 전송 전에 검증한다.** `sort_by` 는 `title`/`author`/`pubiYr`, `sort_dir` 은 `asc`/`desc`.
+허용값 밖이면 오류를 돌려준다.
 
-## 인증키 발급
+**Claude 앱 안에서 검색해 설치할 수는 없다.** 공식 MCP 레지스트리 등재와 Claude Desktop 인앱
+커넥터 디렉터리는 별개이고 자동 동기화되지 않는다. 위 설치 방법 중 하나를 쓴다.
 
-REST 도구(`kci_search`·`kci_detail`·`kci_references`·`kci_journal_citation`)에만 필요합니다.
-**OAI-PMH 수확은 키 없이 동작**하므로 급하지 않다면 발급 전에도 시작할 수 있습니다.
+**도구 설명이 한국어다.** 한국어를 다루는 모델이어야 도구 선택이 정확하다.
 
-1. [open.kci.go.kr](https://open.kci.go.kr) 에서 **Open API 이용 신청**
-2. 발급된 인증키 문자열 1개를 받는다
-3. 아래 중 한 곳에 넣는다 — **코드나 커밋에는 절대 넣지 않는다**
+**`mcp` SDK 는 1.x 로 고정된다**(`mcp>=1.2.0,<2`). 2.0 에서 `mcp.server.fastmcp` 가 제거되어
+상한이 없으면 기동에 실패한다.
 
-| 사용 환경 | 넣는 곳 |
-|---|---|
-| Claude Code (프로젝트) | `.claude/settings.local.json` 의 `env` 블록 (gitignore 대상) |
-| Claude Desktop | `claude_desktop_config.json` 의 `env` — **평문 인라인**(`${VAR}` 확장 안 됨) |
-| `.mcpb` 설치 | 설치 시 뜨는 입력란 |
-| CLI / 로컬 개발 | `.env`(gitignore) 또는 OS 사용자 환경변수 |
+## CLI
 
-ScienceON(KISTI)과 달리 **AES 암호화·토큰 발급·공인 IP 등록이 전부 불필요**합니다. 평문 `key`
-쿼리 파라미터 하나로 호출합니다.
+```bash
+kci identify                                  # OAI 무인증 — 키 없이 즉시
+kci harvest --set ARTI --from 2024-01-01 --until 2024-12-31 --contains 학부모 --max 500
+kci search --title 경계선지능 --rows 20        # REST(인증키 필요)
+kci collect --config config/borderline_slow.yaml
+```
 
-## 자격증명 / 네트워크
-- `KCI_API_KEY` → 위 표의 위치에만. **커밋·로그 금지.** OAI는 키 불필요.
-- KCI 방화벽은 **User-Agent 필터**를 건다(`curl` 기본 UA는 400 차단 안내페이지). 본 서버는 `requests` 로 호출하므로 정상.
-- 교육망/사내망 **SSL 인터셉션**은 `truststore`로 OS 신뢰저장소를 사용해 통과(검증 유지). `KCI_OS_TRUST=0`로 비활성.
+로컬 개발은 `uv sync`. 클라우드 동기화 폴더(OneDrive 등)라면 venv 를 폴더 밖에 두기를 권한다
+(`UV_PROJECT_ENVIRONMENT`).
+
+## 네트워크
+
+- KCI 방화벽은 **User-Agent 필터**를 건다. `curl` 기본 UA 는 차단 안내페이지를 받는다.
+  본 서버는 `requests` 로 호출하므로 정상 동작한다.
+- 교육망·사내망 **SSL 인터셉션** 환경에서는 `truststore` 로 OS 신뢰저장소를 사용해 통과한다
+  (TLS 검증을 끄지 않는다). 비활성은 `KCI_OS_TRUST=0`.
+- HTTP 전송에는 인증이 없다. 기본 바인드는 루프백(`127.0.0.1`)이다. `--host 0.0.0.0` 으로 외부에
+  열면 인증키를 가진 서버가 그대로 노출되므로 신뢰된 망에서만 쓴다.
 
 ## 라이선스
-MIT
+
+MIT. 본 프로젝트는 한국연구재단의 비공식 클라이언트이며 제휴 관계가 없다.
+KCI 데이터 이용은 KCI 약관을 따른다.
