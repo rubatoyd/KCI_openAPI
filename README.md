@@ -3,6 +3,7 @@
 <!-- mcp-name: io.github.rubatoyd/kci-openapi-mcp -->
 
 [![CI](https://github.com/rubatoyd/KCI_openAPI/actions/workflows/ci.yml/badge.svg)](https://github.com/rubatoyd/KCI_openAPI/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/rubatoyd/KCI_openAPI)](https://github.com/rubatoyd/KCI_openAPI/releases/latest)
 
 한국연구재단(NRF) **KCI(Korea Citation Index)** 문헌·인용지수 검색·수집 **MCP 서버 + CLI**.
 **REST Open API**(키워드 검색)와 **OAI-PMH**(무인증 대량 수확)를 함께 다룬다.
