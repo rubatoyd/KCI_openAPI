@@ -1,0 +1,48 @@
+name: 사용량 기록
+
+# GitHub 의 트래픽(조회·클론) 통계는 **14일 롤링 윈도**라 그 뒤로는 사라진다.
+# 장기 추세를 보려면 주기적으로 찍어 두는 수밖에 없다 → docs/usage.csv 에 누적한다.
+#
+# 스크립트가 날짜 키로 **병합**하므로 며칠 걸러도 최대 13일까지 자동으로 메워진다.
+# ⚠️ GitHub 는 60일간 활동이 없는 저장소의 schedule 을 자동 비활성화한다.
+#    그때는 Actions 탭에서 다시 켜거나 workflow_dispatch 로 수동 실행할 것.
+on:
+  schedule:
+    - cron: "17 3 * * *"   # 매일 03:17 UTC (정각은 혼잡해 지연이 잦다)
+  workflow_dispatch:
+
+permissions:
+  contents: write          # usage.csv 커밋 + traffic API 접근(push 권한 요구)
+
+concurrency:
+  group: usage-record
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 사용량 조회 → docs/usage.csv 병합
+        env:
+          # ⚠️ 트래픽(조회·클론) API 는 **push 권한**을 요구하는데 GITHUB_TOKEN 으로는 403 이다
+          #    (실측 확인). 조회·클론까지 기록하려면 저장소 Secrets 에 `USAGE_TOKEN` 을 넣는다
+          #    — classic PAT(scope: repo) 또는 fine-grained PAT(Administration: Read).
+          #    없으면 다운로드·스타만 기록하고 note 컬럼에 사유를 남긴다.
+          GITHUB_TOKEN: ${{ secrets.USAGE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: python scripts/record_usage.py
+
+      - name: 변경분만 커밋
+        run: |
+          # ⚠️ `git diff` 는 **untracked 파일을 못 본다** — 첫 실행에서 새로 만든 usage.csv 가
+          #    조용히 커밋되지 않았다(실측). status 로 판정한다.
+          if [ -z "$(git status --porcelain -- docs/usage.csv)" ]; then
+            echo "변경 없음 — 커밋하지 않는다"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/usage.csv
+          git commit -m "chore: 사용량 기록 $(date -u +%Y-%m-%d)"
+          git push

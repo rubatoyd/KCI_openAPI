@@ -6,6 +6,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # 사용량 기록 워크플로가 매일 커밋하므로 그것 때문에 CI 가 도는 일은 없게 한다
+    paths-ignore: ["docs/usage.csv"]
   pull_request:
 
 permissions:
