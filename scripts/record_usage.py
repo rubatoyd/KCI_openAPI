@@ -110,8 +110,9 @@ def main() -> int:
     else:
         notes.append("repo:조회실패")
 
-    if notes:
-        snap["note"] = ";".join(notes)
+    # ⚠️ 성공했으면 **비워야 한다.** `if notes:` 로만 쓰면 예전 실패가 남긴 '권한없음' 이
+    #    토큰을 넣은 뒤에도 영영 남아 "아직 권한이 없다"는 거짓 신호가 된다(실측으로 확인).
+    snap["note"] = ";".join(notes)
 
     # ── 저장 (날짜 오름차순) ──────────────────────────────────────────────────
     OUT.parent.mkdir(parents=True, exist_ok=True)

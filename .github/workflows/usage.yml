@@ -45,4 +45,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/usage.csv
           git commit -m "chore: 사용량 기록 $(date -u +%Y-%m-%d)"
-          git push
+          # ⚠️ 그 사이 main 이 앞서 있으면 push 가 거절된다(실측: 수동 실행을 겹쳐 돌렸을 때 발생).
+          #    rebase 후 재시도한다 — usage.csv 는 이 워크플로만 건드리므로 충돌하지 않는다.
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push 거절 — rebase 후 재시도 ($i/3)"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          done
+          echo "::error::3회 재시도 후에도 push 실패"
+          exit 1
