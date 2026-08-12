@@ -262,6 +262,20 @@ nl 에서 분할 수집 경고가 **잘못된 키 이름 하나** 때문에 한 
   ℹ️ 자격증명 유출(scienceON 최우선 지적)은 **kci 에는 해당 없다** — `raise_for_status()` 가
   키 포함 URL 을 메시지에 넣는다는 것을 알고 처음부터 피했고 주석으로 남겨두었다.
 
+- 🔴 **출력 경로 이탈 차단 (2026-08-11)** — 세 번째 자매 프로젝트 `nl-openapi-mcp` 에서 발견돼
+  이쪽에서도 **그대로 재현**됐다. `export()` 가 `out_dir / f"{name}{ext}"` 를 쓰는데 `name` 은
+  `.replace(" ", "_")[:60]` 만 거쳐 경로 구분자·`..` 가 통과했다.
+  ```
+  name="../escaped" → …\Temp\<tmp>\escaped.json     ← out_dir 밖
+  name="..\esc2"    → …\Temp\<tmp>\esc2.json        ← out_dir 밖
+  name="sub/dir/x"  → FileNotFoundError (조용한 실패)
+  ```
+  ⚠️ **`name` 은 MCP 도구 인자이고 미지정 시 검색어가 그대로 들어온다** — 사용자 입력이 파일
+  경로에 직접 닿는다. `exporters.safe_name()` 신설(경로 성분·`..`·제어문자·윈도 예약명·후행 점
+  제거)하고 **`export()` 한 곳에서** 적용한다(호출부마다 고치면 새 호출부에서 또 샌다).
+  최종 경로가 `out_dir` 안인지 `resolve()` 로 이중 확인. 한글 파일명은 보존된다.
+  회귀 테스트 15건 추가(72 → 87). scienceON 도 동일 수정.
+
 ## 8-1. 이전 상태 (2026-08-04)
 - ✅ 공식 PDF 2종 → `reference/`(원본) + `docs/`(복구 명세 2종) 마이그레이션 완료.
 - ✅ **`src/kci_mcp/` 구현 완료** — config/models/parser/oai_client/client/router/exporters/server/cli.
