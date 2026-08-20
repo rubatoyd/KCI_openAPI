@@ -7,11 +7,11 @@
 [![Downloads](https://img.shields.io/github/downloads/rubatoyd/KCI_openAPI/total?label=downloads)](https://github.com/rubatoyd/KCI_openAPI/releases)
 
 <!-- usage:start -->
-> 📈 **사용량** — 최근 14일 조회 **44**회(고유 7) · 클론 **383**회(고유 164) · 릴리스 자산 누적 다운로드 **198**
+> 📈 **사용량** — 최근 14일 조회 **44**회(고유 7) · 클론 **374**회(고유 160) · 릴리스 자산 누적 다운로드 **200**
 >
 > ![일별 클론·조회 추이](docs/usage.svg)
 >
-> <sub>2026-08-19 자동 갱신 · 전체 이력은 [`docs/usage.csv`](docs/usage.csv). GitHub 트래픽 통계는 14일 창만 제공하므로 이 저장소가 매일 찍어 누적한다.</sub>
+> <sub>2026-08-20 자동 갱신 · 전체 이력은 [`docs/usage.csv`](docs/usage.csv). GitHub 트래픽 통계는 14일 창만 제공하므로 이 저장소가 매일 찍어 누적한다.</sub>
 <!-- usage:end -->
 
 한국연구재단(NRF) **KCI(Korea Citation Index)** 문헌·인용지수 검색·수집 **MCP 서버 + CLI**.
