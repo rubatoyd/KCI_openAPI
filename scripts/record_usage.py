@@ -30,6 +30,18 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "")
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 OUT = Path(os.environ.get("USAGE_CSV", "docs/usage.csv"))
 
+# 실패 원인을 note 에 남기기 위한 기록. 🔴 초판은 실패를 전부 '권한없음' 으로 뭉갰는데,
+# **403 과 404 는 처방이 다르다** — 404 는 토큰이 저장소를 못 보는 것(저장소 목록 문제),
+# 403 은 저장소는 보이나 이 엔드포인트 권한이 없는 것(fine-grained 의 Administration:Read).
+# 구분이 안 되면 워크플로 로그를 뒤져야만 원인을 알 수 있다(자매 na 에서 실제로 그렇게 헤맸다).
+LAST_ERROR: dict[str, str] = {}
+
+_WHY = {
+    "403": "권한부족(fine-grained 는 Administration:Read, classic 은 repo 스코프 필요)",
+    "404": "저장소접근불가(토큰의 Repository access 에 이 저장소가 없다)",
+    "401": "토큰무효(만료·오타)",
+}
+
 # 트래픽(일별) + 스냅샷(그날 시점의 누적값)
 FIELDS = ["date", "views", "view_uniques", "clones", "clone_uniques",
           "release_downloads", "releases", "stars", "forks", "note"]
@@ -53,9 +65,11 @@ def api(path: str = ""):
             return json.loads(r.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         print(f"  !! {path} → HTTP {e.code}", file=sys.stderr)
+        LAST_ERROR[path] = str(e.code)
         return None
     except Exception as e:  # noqa: BLE001
         print(f"  !! {path} → {type(e).__name__}", file=sys.stderr)
+        LAST_ERROR[path] = type(e).__name__
         return None
 
 
@@ -144,7 +158,10 @@ def update_readme(rows: dict[str, dict], snap: dict, today: str) -> None:
         return sum(int(rows[d].get(key) or 0) for d in recent)
 
     dl = snap.get("release_downloads") or "—"
-    chart = f"\n>\n> ![일별 클론·조회 추이]({CHART.as_posix()})\n" if write_chart(rows) else ""
+    # ⚠️ 두 분기 모두 **줄바꿈으로 끝나야 한다.** 빈 문자열이면 뒤따르는 `>` 가 같은 줄에
+    #    붙어 `누적 다운로드 **3**>` 처럼 렌더된다(자매 na-openapi-mcp 실측).
+    #    이 저장소는 항상 그래프가 있어 이 분기를 밟은 적이 없다.
+    chart = f"\n>\n> ![일별 클론·조회 추이]({CHART.as_posix()})\n" if write_chart(rows) else "\n"
     body = (f"> 📈 **사용량** — 최근 14일 조회 **{s('views'):,}**회(고유 {s('view_uniques'):,}) · "
             f"클론 **{s('clones'):,}**회(고유 {s('clone_uniques'):,}) · "
             f"릴리스 자산 누적 다운로드 **{dl}**"
@@ -175,7 +192,8 @@ def main() -> int:
                        ("clones", ("clones", "clone_uniques"))):
         data = api(f"traffic/{kind}")
         if data is None:
-            notes.append(f"{kind}:권한없음")
+            code = LAST_ERROR.get(f"traffic/{kind}", "?")
+            notes.append(f"{kind}:HTTP{code}({_WHY.get(code, '원인미상')})")
             continue
         for item in data.get(kind, []):
             d = item["timestamp"][:10]

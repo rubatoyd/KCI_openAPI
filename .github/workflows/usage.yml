@@ -37,7 +37,13 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/usage.csv docs/usage.svg README.md
+          # ⚠️ **usage.svg 는 없을 수 있다.** write_chart() 는 날짜 행이 2개 미만이면
+          #    그리지 않는데, `USAGE_TOKEN` 이 없거나 권한이 모자라면 트래픽 API 가 실패해
+          #    매 실행이 스냅샷 1행뿐이어서 **영원히 조건을 못 채운다**.
+          #    무조건 add 하면 `pathspec did not match any files` 로 워크플로가 죽는다.
+          #    (자매 na-openapi-mcp 에서 실제로 발생 — 이 저장소는 토큰이 통해 안 드러났다.)
+          git add docs/usage.csv README.md
+          [ -f docs/usage.svg ] && git add docs/usage.svg || true
           # ⚠️ 변경 판정은 **git add 뒤 스테이징된 차이**로 한다.
           #    · `git diff`(unstaged)는 untracked 새 파일을 못 본다 — 첫 실행분이 조용히 누락됐다.
           #    · `git status --porcelain`은 줄바꿈 정규화(CRLF→LF)만 다른 파일도 변경으로 보고해,
