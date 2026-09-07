@@ -100,7 +100,12 @@ def write_chart(rows: dict[str, dict]) -> bool:
         return False
     clones = [int(rows[d].get("clones") or 0) for d in dates]
     views = [int(rows[d].get("views") or 0) for d in dates]
-    hi = max(max(clones), max(views), 1)
+    # 눈금 3개(0·중간·최대)가 **서로 달라야 한다.** hi=1 이면 중간 눈금이
+    # int(1*0.5)=0 이라 라벨이 `0 · 0 · 1` 로 겹친다 — 트래픽이 아직 0뿐인
+    # 신설 저장소(na-openapi-mcp)에서 실제로 그렇게 그려졌다.
+    # 짝수로 올려 중간 눈금이 항상 정수이면서 양끝과 구별되게 한다.
+    hi = max(max(clones), max(views), 2)
+    hi += hi % 2
 
     W, H, PAD_L, PAD_B, PAD_T = 720, 200, 34, 26, 16
     iw, ih = W - PAD_L - 10, H - PAD_B - PAD_T
