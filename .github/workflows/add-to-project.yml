@@ -1,0 +1,23 @@
+name: 보드에 추가
+
+# 새 이슈·PR 을 사용자 프로젝트 "MCP 서버 모음" 에 자동 등록한다.
+# GITHUB_TOKEN 은 사용자 프로젝트에 쓸 수 없어 PAT 가 필요하다
+# (ADD_TO_PROJECT_PAT · classic, project 스코프. 저장소가 공개라 repo 스코프는 불필요).
+
+on:
+  issues:
+    types: [opened, reopened, transferred]
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      # v2.0.0 을 SHA 로 고정 — PAT 를 넘기므로 태그 이동을 허용하지 않는다.
+      - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd
+        with:
+          project-url: https://github.com/users/rubatoyd/projects/1
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
